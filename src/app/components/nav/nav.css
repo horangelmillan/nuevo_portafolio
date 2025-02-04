@@ -1,0 +1,88 @@
+/* Animations transition */
+.fadeOut {
+    opacity: 0;
+    transform: translate(0, -5rem);
+    background: linear-gradient(#0000008e, transparent);
+}
+
+.fadeIn {
+    opacity: 1;
+    backdrop-filter: blur(1px);
+    background: linear-gradient(#0000008e, transparent);
+}
+
+/* Navbar */
+.Navbar {
+    height: 5.5rem;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.7s;
+    z-index: 9999;
+}
+
+.Navbar-content {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5em 1.5em;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: none;
+    }
+
+    to {
+        opacity: 1;
+        backdrop-filter: blur(1px);
+        background: linear-gradient(#000000a5, transparent);
+    }
+}
+
+/* Navbar header */
+
+.Navbar .header {
+    font-family: 'Outfit';
+    transition: all 0.5s;
+}
+
+.Navbar button {
+    cursor: pointer;
+    color: #FFFFFF;
+    margin-right: 1.9em;
+}
+
+/* Navbar border */
+.Navbar .border-bottom {
+    grid-area: bor;
+    border-bottom: 0.1px solid rgb(173, 173, 173);
+    width: 90%;
+    margin: 0 auto;
+    padding: 0;
+    position: relative;
+    top: -4px;
+}
+
+/* Para pantallas pequeñas */
+@media (max-width: 550px) {
+    .Navbar-content {
+        display: grid;
+        grid-template-areas:
+        "log lin lin cero"
+        "bor bor bor bor";
+    }
+
+    .fadeIn {
+        opacity: 1;
+        backdrop-filter: blur(2px);
+        background: linear-gradient(#000000, transparent);
+    }
+    
+}

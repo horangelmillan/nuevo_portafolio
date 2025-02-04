@@ -1,0 +1,90 @@
+.Navbar svg {
+    grid-area: log;
+    position: relative;
+    cursor: pointer;
+    margin: auto 0;
+    animation: none;
+}
+
+.Navbar .group1,
+.group2 {
+    transition: all 0.5s;
+}
+
+/*  */
+@keyframes smoothRadius {
+    from {
+        border-radius: 0;
+    }
+
+    to {
+        border-radius: 20%;
+    }
+}
+
+@keyframes reverseRadius {
+    from {
+        border-radius: 20%;
+    }
+
+    to {
+        border-radius: 0;
+    }
+}
+
+.group1Start,
+.group2Start,
+.group1End,
+.group2End {
+    border-radius: 0px;
+    transition: all 0.5s;
+}
+
+:root {
+    --is-small-screen: false;
+}
+
+@media (min-width: 500px) {
+    :root {
+        --is-small-screen: false;
+    }
+
+    .Navbar svg:hover .group1 {
+        transform: translate(90px, 90px);
+    }
+
+    .Navbar svg:hover {
+        border-radius: 0%;
+        animation: smoothRadius 1s forwards;
+    }
+    
+    .Navbar svg:not(:hover) {
+        animation: reverseRadius 0.7s forwards;
+    }
+    
+    .Navbar svg:hover .group2 {
+        transform: translate(-90px, -90px);
+    }
+}
+
+@media (max-width: 499px) {
+    :root {
+        --is-small-screen: true;
+    }
+
+    .Navbar svg .group1Start {
+        transform: translate(90px, 90px);
+    }
+
+    .Navbar svg .group2Start {
+        transform: translate(-90px, -90px);
+    }
+
+    .Navbar svg .group1End {
+        transform: translate(0px, 0px);
+    }
+
+    .Navbar svg .group2End {
+        transform: translate(0px, 0px);
+    }
+}

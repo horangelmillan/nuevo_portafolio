@@ -1,0 +1,12 @@
+section {
+    height: calc(100vh); /* 100vh de altura de pantalla, 5rem de la barra de navegacion y 2px de los bordes */
+    scroll-snap-align: start;
+}
+
+section:nth-child(1) {
+    padding-top: calc(0.5rem + 93px); 
+}
+
+section:nth-last-child(1) {
+    padding-bottom: calc(0.5rem + 93px); 
+}

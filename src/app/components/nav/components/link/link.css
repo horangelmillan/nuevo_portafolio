@@ -1,0 +1,95 @@
+li {
+    list-style-type: none;
+}
+
+.Links {
+    display: flex;
+}
+
+.Links span {
+    padding: 1rem 0rem;
+    margin: 0;
+    position: relative;
+    transform: translateY(0);
+}
+
+.Links button {
+    font-family: 'Outfit';
+    width: 100%;
+    display: flex;
+    background: none;
+    border: none;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+}
+
+.Links div {
+    position: absolute;
+    border-bottom: 2px solid rgb(204, 137, 13);
+    height: 1px;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.Links>button:hover>div {
+    width: 5rem;
+}
+
+.crossIn {
+    width: 0;
+}
+
+.crossOut {
+    width: 100%;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: none;
+    }
+
+    to {
+        opacity: 1;
+        backdrop-filter: blur(1px);
+        background: linear-gradient(#00000069, transparent);
+    }
+}
+
+/* Para pantallas pequeñas */
+@media (max-width: 499px) {
+    .Links {
+        position: relative;
+        display: flex;
+        transition: all 1.5s;
+        margin-top: -50rem;
+        flex-direction: column;
+    }
+
+    .Links span {
+        padding: 1rem 0rem;
+        transition: transform 2s, opacity 2s;
+        /* Aseguramos que haya una transición */
+    }
+
+    .hide {
+        margin-top: -50rem;
+    }
+
+    .show {
+        margin-top: 5rem;
+    }
+
+    .Links button {
+        margin: auto;
+    }
+
+    .Navbar svg:hover .group1 {
+        transform: none;
+    }
+    
+    .Navbar svg:hover .group2 {
+        transform: none;
+    }
+}

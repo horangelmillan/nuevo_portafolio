@@ -1,0 +1,22 @@
+{
+    "": {
+        "path": "/",
+        "translate": 66,
+        "img": "https://www.wallpapertip.com/wmimgs/45-453330_abstract-painting-background-hd.jpg"
+    },
+    "me": {
+        "path": "/me",
+        "translate": 3,
+        "img": "https://www.enter.co/wp-content/uploads/2015/06/laptop1_1024.jpg"
+    },
+    "projects": {
+        "path": "/projects",
+        "translate": 33,
+        "img": null
+    },
+    "contact": {
+        "path": "/contact",
+        "translate": 33,
+        "img": null
+    }
+}
