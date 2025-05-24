@@ -68,7 +68,6 @@ li {
     }
 
     .Links span {
-        padding: 1rem 0rem;
         transition: transform 2s, opacity 2s;
         /* Aseguramos que haya una transición */
     }

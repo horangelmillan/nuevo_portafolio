@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Outfit } from 'next/font/google';
 import useCrossOutLink from './hooks/useCrossOutLink';
 import './link.css';
+import useTogleBurguerMenu from './hooks/useTogleBurguerMenu';
 
 const outfitFont = Outfit({ subsets: ['latin'], weight: ['400', '700'] });
 
@@ -15,6 +16,7 @@ const Link = () => {
     const refLinks = useRef();
 
     useCrossOutLink([ref1, ref2, ref3, ref4]);
+    useTogleBurguerMenu(refLinks);
 
     return (
         <li>

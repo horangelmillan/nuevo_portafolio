@@ -10,9 +10,9 @@ const useCrossOutLink = (refs) => {
             if (!ref.current) return;
 
             if (pathname === ref.current.dataset.link) {
-                ref.current.children[1].className = 'crossOut';
+                ref.current.children[1].setAttribute("class", 'crossOut');
             } else {
-                ref.current.children[1].className = 'crossIn';
+                ref.current.children[1].setAttribute("class", 'crossIn');
             }
         });
     }, [pathname, refs]); // Se ejecuta cuando cambia la ruta

@@ -3,6 +3,7 @@
     opacity: 0;
     transform: translate(0, -5rem);
     background: linear-gradient(#0000008e, transparent);
+    filter: blur(15px);
 }
 
 .fadeIn {
@@ -13,7 +14,6 @@
 
 /* Navbar */
 .Navbar {
-    height: 5.5rem;
     width: 100%;
     position: fixed;
     top: 0;
@@ -30,7 +30,7 @@
     align-items: stretch;
     justify-content: space-between;
     width: 100%;
-    padding: 0.5em 1.5em;
+    padding: 0 1rem;
 }
 
 @keyframes fadeIn {

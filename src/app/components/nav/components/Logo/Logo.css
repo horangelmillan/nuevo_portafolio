@@ -2,7 +2,7 @@
   grid-area: log;
   position: relative;
   cursor: pointer;
-  margin: auto 0;
+  margin: auto 1rem;
   animation: none;
 }
 
@@ -95,5 +95,11 @@
 
   .Navbar svg .group2End {
     transform: translate(0px, 0px);
+  }
+
+  .Navbar svg {
+    
+    margin: 2rem 1rem;
+    animation: none;
   }
 }
