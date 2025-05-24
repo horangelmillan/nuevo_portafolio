@@ -11,7 +11,7 @@ const Logo = ({ size }) => {
     const refGroup1 = useRef();
     const refGroup2 = useRef();
 
-    useTogleLogo([refGroup1, refGroup2])
+    useTogleLogo([refGroup1, refGroup2]);
 
     const onClickController = () => {
         setIsBurguerMenuOpen(!isBurguerMenuOpen);

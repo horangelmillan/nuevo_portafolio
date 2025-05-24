@@ -15,13 +15,16 @@ const useTogleLogo = (refs) => {
     useEffect(() => {
         const smallScreen = isSmallScreen(); // Leer el valor de la variable CSS
 
-        if (isBurguerMenuOpen && smallScreen) {
-            refs[0].current.clasName = 'group1Start';
-            refs[1].current.clasName = 'group2Start';
-        } else {
-            refs[0].current.clasName = 'group1End';
-            refs[1].current.clasName = 'group2End';
+        if (smallScreen) {
+            if (isBurguerMenuOpen) {
+                refs[0].current.setAttribute('class', 'group1Start');
+                refs[1].current.setAttribute('class', 'group2Start');
+            } else {
+                refs[0].current.setAttribute('class', 'group1End');
+                refs[1].current.setAttribute('class', 'group2End');
+            }
         }
+
     }, [isBurguerMenuOpen]);
 
 };
