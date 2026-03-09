@@ -40,7 +40,8 @@ export default function Body() {
 
   return (
     <div className="body" ref={containerRef}>
-      <Section />
+      <Section title={"Horangel Millan"} subtitle={"Full-Stack Developer | SAP BTP Consultant"} content={`Desarrollador web especializado en JavaScript y arquitecturas cloud. \n Experiencia construyendo aplicaciones empresariales e integraciones en SAP Business Technology Platform, combinando tecnologías modernas con soluciones corporativas escalables.`}/>
+      <Section title={"Horangel Millan"} subtitle={"Full-Stack Developer | SAP BTP Consultant"} content={"Desarrollador web especializado en JavaScript y arquitecturas cloud. Experiencia construyendo aplicaciones empresariales e integraciones en SAP Business Technology Platform, combinando tecnologías modernas con soluciones corporativas escalables."}/>
       <Section />
       <Section />
       <Section />

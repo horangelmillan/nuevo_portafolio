@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "lodash": "^4.17.21",
-    "next": "^15.3.2",
+    "lodash": "^4.17.23",
+    "next": "^15.5.12",
     "portafolio": "file:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

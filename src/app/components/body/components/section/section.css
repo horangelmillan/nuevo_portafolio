@@ -4,9 +4,31 @@ section {
 }
 
 section:nth-child(1) {
-    padding-top: calc(0.5rem + 93px); 
+    padding-top: calc(0.5rem + 93px);
 }
 
 section:nth-last-child(1) {
     padding-bottom: calc(0.5rem + 93px); 
+}
+
+.section-content {
+    height: 90%;
+    align-content: center;
+}
+
+h1 {
+    color: #000000;
+    font-size: 4.5rem;
+    margin: 2rem 0;
+}
+
+h2 {
+    color: #f06023;
+    font-size: 2.5rem
+}
+
+P {
+    color: #525252;
+    font-size: 1.25rem;
+    white-space: pre-line;
 }
