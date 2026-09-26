@@ -10,6 +10,7 @@ const outfit = localFont({
 });
 
 export default function Section({ sectionType = "hero", title, subtitle, content }) {
+  if (!title && !subtitle && !content) return null;
   return (
     <section className="section">
       {/* Contenido placeholder - REEMPLAZAR con tu información real */}

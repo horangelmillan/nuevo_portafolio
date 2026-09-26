@@ -9,19 +9,20 @@ const useScrollFooter = () => {
     useEffect(() => {
         // Función que se ejecutará durante el scroll (limitada por throttle)
         const switchShowFooter = throttle(() => {
-            if (storeScrollData.windowHeight + storeScrollData.y  === storeScrollData.scrollHeight) {
+            if (storeScrollData.windowHeight + storeScrollData.y >= storeScrollData.scrollHeight - 2) {
                 setIsShowFooter(true);
             } else {
                 setIsShowFooter(false);
             };
-        }, 500); // Limitar la frecuencia de ejecución a una vez cada 200ms
+        }, 500);
 
-        window.addEventListener('scroll', switchShowFooter);
+        window.addEventListener('scroll', switchShowFooter, { passive: true });
 
         return () => {
+            switchShowFooter.cancel();
             window.removeEventListener('scroll', switchShowFooter);
         };
-    }, [storeScrollData]);
+    }, [storeScrollData, setIsShowFooter]);
 };
 
 export default useScrollFooter;

@@ -25,7 +25,7 @@ const useTogleLogo = (refs) => {
             }
         }
 
-    }, [isBurguerMenuOpen]);
+    }, [isBurguerMenuOpen, refs]);
 
 };
 

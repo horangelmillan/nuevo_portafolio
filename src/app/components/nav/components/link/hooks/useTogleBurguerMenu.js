@@ -12,7 +12,7 @@ const useTogleBurguerMenu = (refs) => {
             } else {
                 refs.current.setAttribute('class', 'Links hide');
             }
-    }, [pathname, isBurguerMenuOpen]);
+    }, [pathname, isBurguerMenuOpen, refs]);
 
 };
 

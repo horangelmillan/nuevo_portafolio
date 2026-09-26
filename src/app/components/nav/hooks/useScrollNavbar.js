@@ -19,12 +19,13 @@ const useScrollNavbar = () => {
             setScrollPosition(storeScrollData.y);
         }, 500); // Limitar la frecuencia de ejecución a una vez cada 200ms
 
-        window.addEventListener('scroll', switchShowNavbar);
+        window.addEventListener('scroll', switchShowNavbar, { passive: true });
 
         return () => {
+            switchShowNavbar.cancel();
             window.removeEventListener('scroll', switchShowNavbar);
         };
-    });
+    }, [storeScrollData, scrollPosition, setIsShowNavbar]);
 };
 
 export default useScrollNavbar;
