@@ -6,19 +6,21 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint src",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "lodash": "^4.17.23",
-    "next": "^15.5.12",
-    "portafolio": "file:",
+    "next": "^15.5.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.3"
   },
+  "packageManager": "pnpm@11.11.0",
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
     "eslint": "^9",
-    "eslint-config-next": "15.1.6"
+    "eslint-config-next": "^15.5.21"
   }
 }

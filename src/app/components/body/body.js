@@ -1,50 +1,15 @@
-"use client"; // Necesario para usar hooks en Next.js
+"use client";
 
-import { useEffect, useRef } from "react";
 import Section from "./components/section/section";
 import "./body.css";
 
 export default function Body() {
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const sections = container.querySelectorAll("section");
-
-    let isScrolling = false;
-
-    const handleScroll = (event) => {
-      if (isScrolling) return; // Evita desplazamientos dobles
-      isScrolling = true;
-
-      event.preventDefault();
-      const currentIndex = [...sections].findIndex(
-        (section) => section.getBoundingClientRect().top >= 0
-      );
-
-      const nextIndex = event.deltaY > 0 ? currentIndex + 1 : currentIndex - 1;
-
-      if (sections[nextIndex]) {
-        sections[nextIndex].scrollIntoView({ behavior: "smooth" });
-      }
-
-      setTimeout(() => {
-        isScrolling = false;
-      }, 500); // Evita scrolls seguidos
-    };
-
-    container.addEventListener("wheel", handleScroll);
-
-    return () => container.removeEventListener("wheel", handleScroll);
-  }, []);
-
   return (
-    <div className="body" ref={containerRef}>
-      <Section title={"Horangel Millan"} subtitle={"Full-Stack Developer | SAP BTP Consultant"} content={`Desarrollador web especializado en JavaScript y arquitecturas cloud. \n Experiencia construyendo aplicaciones empresariales e integraciones en SAP Business Technology Platform, combinando tecnologías modernas con soluciones corporativas escalables.`}/>
-      <Section title={"Horangel Millan"} subtitle={"Full-Stack Developer | SAP BTP Consultant"} content={"Desarrollador web especializado en JavaScript y arquitecturas cloud. Experiencia construyendo aplicaciones empresariales e integraciones en SAP Business Technology Platform, combinando tecnologías modernas con soluciones corporativas escalables."}/>
-      <Section />
-      <Section />
-      <Section />
+    <div className="body">
+      <Section sectionType={"hero"} title={"Horangel Millan"} subtitle={"Full-Stack Developer | SAP BTP Consultant"} content={"Desarrollador web especializado en JavaScript y arquitecturas cloud.\nExperiencia construyendo aplicaciones empresariales e integraciones en SAP Business Technology Platform, combinando tecnologías modernas con soluciones corporativas escalables."} />
+      <Section title={"Sobre mí"} subtitle={"De CRA + Express a Next.js"} content={"Retomando mi portfolio tras migrarlo a Next.js 15 + React 19 + Zustand + pnpm.\nMe enfoco en frontend moderno, integraciones cloud y código mantenible."} />
+      <Section title={"Proyectos"} subtitle={"Selección"} content={"Portfolio (este sitio) · Integraciones SAP BTP · Apps empresariales JavaScript.\nPróximo paso: publicar casos con demo, repo y métricas."} />
+      <Section title={"Contacto"} subtitle={"¿Hablamos?"} content={"Escríbeme por LinkedIn o GitHub: horangelmillan.\nAbierto a roles Full-Stack y consultoría SAP BTP."} />
     </div>
   );
 }

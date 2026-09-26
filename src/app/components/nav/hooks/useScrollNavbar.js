@@ -1,30 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { throttle } from "lodash";
 import useStore from "../../../store/store";
 
 const useScrollNavbar = () => {
-    const [scrollPosition, setScrollPosition] = useState(0);
-    const { storeScrollData, setIsShowNavbar } = useStore();
+    const setIsShowNavbar = useStore((s) => s.setIsShowNavbar);
+    const lastY = useRef(0);
 
     useEffect(() => {
-        // Función que se ejecutará durante el scroll (limitada por throttle)
         const switchShowNavbar = throttle(() => {
-            if (storeScrollData.y <= scrollPosition) {
-                setIsShowNavbar(true);
-            } else {
-                setIsShowNavbar(false);
-            };
+            const y = window.scrollY;
+            setIsShowNavbar(y <= lastY.current);
+            lastY.current = y;
+        }, 150);
 
-            setScrollPosition(storeScrollData.y);
-        }, 500); // Limitar la frecuencia de ejecución a una vez cada 200ms
-
-        window.addEventListener('scroll', switchShowNavbar);
+        lastY.current = window.scrollY;
+        window.addEventListener("scroll", switchShowNavbar, { passive: true });
 
         return () => {
-            window.removeEventListener('scroll', switchShowNavbar);
+            switchShowNavbar.cancel();
+            window.removeEventListener("scroll", switchShowNavbar);
         };
-    });
+    }, [setIsShowNavbar]);
 };
 
 export default useScrollNavbar;

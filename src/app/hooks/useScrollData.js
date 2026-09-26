@@ -20,19 +20,20 @@ const useScrollData = () => {
             });
 
             // Verifica si el usuario ha llegado al final
-            if (documentHeight - scrollPosition === windowHeight) {
+            if (documentHeight - scrollPosition <= windowHeight + 2) {
                 setIsFinalScroll(true);
             } else {
                 setIsFinalScroll(false);
             }
         };
 
-        document.addEventListener("scroll", handleScroll);
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
 
         return () => {
-            document.removeEventListener("scroll", handleScroll);
+            window.removeEventListener("scroll", handleScroll);
         };
-    }, []);
+    }, [setIsFinalScroll, setScrollData]);
 };
 
 export default useScrollData;
