@@ -1,12 +1,23 @@
-/* Fondo del hero: capas fondo → canvas → halo → contenido. Scoped a .hero. */
+/* Fondo vivo global: capa fija a viewport (fondo → canvas → halo),
+   secciones transparentes por encima. Fase hero idéntica a v7. */
+.global-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Placeholder pre-pintado (mismo tono base del modo claro). */
+  background: linear-gradient(105deg, #faf5ec, #e9e0cf);
+}
+
 .hero {
   position: relative;
   overflow: clip;
-  /* Full-bleed solo en el hero: compensa .body{margin: 0 3em}. */
-  margin: 0 -3em;
-  padding-inline: 3em;
-  /* Placeholder pre-pintado (mismo tono base del modo claro). */
-  background: linear-gradient(105deg, #faf5ec, #e9e0cf);
+  /* Full-bleed: compensa el gutter fluido de .body (misma expresión para
+     ir sincronizados; techo 3em = desktop validado). */
+  margin: 0 calc(clamp(1rem, 4vw, 3em) * -1);
+  padding-inline: clamp(1rem, 4vw, 3em);
+  /* Transparente: el fondo vivo fijo se ve a través. */
+  background: transparent;
 }
 
 .hero-canvas {
@@ -17,6 +28,17 @@
   display: block;
   z-index: 0;
   pointer-events: none;
+}
+
+/* El contenido sube por encima del fondo fijo (nav sigue en 9999). */
+.body {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.section {
+  background: transparent;
 }
 
 .hero-halo {

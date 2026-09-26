@@ -35,6 +35,53 @@ export const PALETTES = {
   },
 };
 
+export const PHASES = [
+  { id: "hero", paletteId: "calida" },
+  { id: "sobre-mi", paletteId: "calida" },
+  { id: "proyectos", paletteId: "calida" },
+  { id: "contacto", paletteId: "calida" },
+];
+
+// Driver de fase por scroll (puro, sin DOM): scrollY es gratis, offsets
+// cacheados fuera (recalculados solo en resize). Devuelve fase activa +
+// progreso 0..1 hacia la siguiente. Con una sola conducta (hero) el motor
+// ignora las no-hero (fallback hero) → cero cambio visual en la base.
+export function getPhaseForScroll(scrollY, offsets, vh) {
+  if (!offsets || offsets.length === 0 || !vh)
+    return { index: 0, id: PHASES[0].id, progress: 0 };
+  const y = scrollY + vh * 0.5;
+  let index = 0;
+  for (let i = 0; i < offsets.length; i++) {
+    const o = offsets[i];
+    if (o && y >= o.top && y < o.bottom) {
+      index = i;
+      break;
+    }
+    if (o && y >= o.bottom) index = Math.min(i + 1, offsets.length - 1);
+  }
+  index = Math.max(0, Math.min(offsets.length - 1, index));
+  const top = offsets[index] ? offsets[index].top : scrollY;
+  const progress = Math.max(0, Math.min(1, (scrollY - top) / vh));
+  const id = (PHASES[index] || PHASES[0]).id;
+  return { index, id, progress };
+}
+
+function paletteAvg(paletteId) {
+  const pal = PALETTES[paletteId];
+  if (!pal) return null;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  for (const hex of pal.colors) {
+    const [cr, cg, cb] = hexToRgb(hex);
+    r += cr;
+    g += cg;
+    b += cb;
+  }
+  const n = Math.max(1, pal.colors.length);
+  return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+}
+
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -264,6 +311,7 @@ export function makeField({
     const jit = deformed
       ? Array.from({ length: 7 }, () => (geoRand() - 0.5) * 0.14)
       : [0, 0, 0, 0, 0, 0, 0];
+    const geom = buildGeom(s, wRatio, bodyRatio, jit);
     pieces.push({
       x,
       y,
@@ -282,7 +330,8 @@ export function makeField({
       wRatio,
       bodyRatio,
       jit,
-      geom: buildGeom(s, wRatio, bodyRatio, jit),
+      geom,
+      paths: buildPaths(geom),
       period: 10 + rand() * 12,
       phase: rand() * Math.PI * 2,
       vx: (rand() - 0.5) * 9,
@@ -303,6 +352,7 @@ export function makeField({
       if (p.s < target) {
         p.s = target * (1 + ((k * 37) % 10) / 60);
         p.geom = buildGeom(p.s, p.wRatio, p.bodyRatio, p.jit);
+        p.paths = buildPaths(p.geom);
       }
       p.depth += need[k] === "xxl" ? 30 : 20;
     }
@@ -311,16 +361,35 @@ export function makeField({
   return { pieces, clusters };
 }
 
-export function tracePoly(ctx, pts) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.closePath();
+// Paths precompilados por pieza (Path2D sin contexto): la geometría solo se
+// recorre UNA vez por regen en lugar de ~40 llamadas Canvas por frame.
+// Rasterización idéntica: mismos puntos, mismos estilos, mismo transform.
+function pathFrom(pts) {
+  const path = new Path2D();
+  path.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) path.lineTo(pts[i][0], pts[i][1]);
+  path.closePath();
+  return path;
 }
 
-export function seg(ctx, a, b) {
-  ctx.moveTo(a[0], a[1]);
-  ctx.lineTo(b[0], b[1]);
+export function buildPaths(geom) {
+  const inner = new Path2D();
+  const segTo = (a, b) => {
+    inner.moveTo(a[0], a[1]);
+    inner.lineTo(b[0], b[1]);
+  };
+  segTo(geom.R, geom.B);
+  segTo(geom.B, geom.L);
+  segTo(geom.R, geom.BR);
+  segTo(geom.B, geom.BC);
+  segTo(geom.L, geom.BL);
+  return {
+    top: pathFrom([geom.T, geom.R, geom.B, geom.L]),
+    left: pathFrom([geom.L, geom.B, geom.BC, geom.BL]),
+    right: pathFrom([geom.R, geom.B, geom.BC, geom.BR]),
+    inner,
+    sil: pathFrom([geom.T, geom.R, geom.BR, geom.BC, geom.BL, geom.L]),
+  };
 }
 
 // Gradientes reales en coordenadas LOCALES (la caché solo se invalida cuando
@@ -347,34 +416,24 @@ export function drawPiece(ctx, p, q, outlinePx) {
   if (!p.gcache || p.gcache.q !== q) {
     p.gcache = { q, grads: rebuildGradients(ctx, p) };
   }
-  const G = p.geom;
   const g = p.gcache.grads;
+  const P = p.paths;
   // 1) Caras rellenas con gradiente real, SIN stroke.
-  tracePoly(ctx, [G.L, G.B, G.BC, G.BL]);
   ctx.fillStyle = g.left;
-  ctx.fill();
-  tracePoly(ctx, [G.R, G.B, G.BC, G.BR]);
+  ctx.fill(P.left);
   ctx.fillStyle = g.right;
-  ctx.fill();
-  tracePoly(ctx, [G.T, G.R, G.B, G.L]);
+  ctx.fill(P.right);
   ctx.fillStyle = g.top;
-  ctx.fill();
+  ctx.fill(P.top);
   // 2) Aristas internas: finas, fijas.
   ctx.strokeStyle = "rgba(10,10,18,0.55)";
   ctx.lineWidth = 1;
   ctx.lineJoin = "round";
-  ctx.beginPath();
-  seg(ctx, G.R, G.B);
-  seg(ctx, G.B, G.L);
-  seg(ctx, G.R, G.BR);
-  seg(ctx, G.B, G.BC);
-  seg(ctx, G.L, G.BL);
-  ctx.stroke();
+  ctx.stroke(P.inner);
   // 3) Silueta exterior: el único stroke grueso y configurable.
   ctx.strokeStyle = "#0c0c13";
   ctx.lineWidth = outlinePx;
-  tracePoly(ctx, [G.T, G.R, G.BR, G.BC, G.BL, G.L]);
-  ctx.stroke();
+  ctx.stroke(P.sil);
 }
 
 // Fondo base (la sombra es una capa separada).
@@ -416,10 +475,43 @@ export function buildShade(ctx, w, h, colorHex, fuerza, ext, suav, cxP, cyP) {
   return grad;
 }
 
+// Capas estáticas precompuestas UNA vez por resize en canvases offscreen a
+// resolución de dispositivo: fondo y sombra por separado para conservar el
+// orden (fondo → cubos → sombra → texto DOM). Por frame: 2 drawImage 1:1
+// (sin remuestreo) en lugar de 2 fills de gradiente a pantalla completa.
+// Píxeles idénticos: mismos gradientes, misma resolución, rect sin AA.
+function makeLayer(w, h, dpr) {
+  const off = document.createElement("canvas");
+  off.width = Math.max(1, Math.floor(w * dpr));
+  off.height = Math.max(1, Math.floor(h * dpr));
+  const c = off.getContext("2d");
+  if (!c) return null;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { off, c };
+}
+
+export function renderStaticLayers(w, h, dpr, bgMode, sh) {
+  const bgL = makeLayer(w, h, dpr);
+  if (!bgL) return null;
+  bgL.c.fillStyle = buildBg(bgL.c, w, h, bgMode);
+  bgL.c.fillRect(0, 0, w, h);
+  let shadeCanvas = null;
+  const shL = makeLayer(w, h, dpr);
+  if (shL) {
+    const shade = buildShade(shL.c, w, h, sh.color, sh.fuerza, sh.ext, sh.suav, sh.cx, sh.cy);
+    if (shade) {
+      shL.c.fillStyle = shade;
+      shL.c.fillRect(0, 0, w, h);
+      shadeCanvas = shL.off;
+    }
+  }
+  return { bg: bgL.off, shade: shadeCanvas };
+}
+
 export function drawFrame(ctx, sim, time, staticT) {
   const { w, h } = sim.size;
-  ctx.fillStyle = sim.bg;
-  ctx.fillRect(0, 0, w, h);
+  if (sim.layers) ctx.drawImage(sim.layers.bg, 0, 0, w, h);
+  else ctx.clearRect(0, 0, w, h);
   const frozen = staticT !== null;
   const t = frozen ? 0 : time;
   const sp = frozen ? 0 : sim.params.speed;
@@ -437,6 +529,23 @@ export function drawFrame(ctx, sim, time, staticT) {
     BR[0] = Math.round(A[0] + (B[0] - A[0]) * ct);
     BR[1] = Math.round(A[1] + (B[1] - A[1]) * ct);
     BR[2] = Math.round(A[2] + (B[2] - A[2]) * ct);
+    // Morph de paleta por fase (segundo eje sobre el actual): con fase hero
+    // o progreso 0 o misma paleta origen/destino se omite → píxeles idénticos
+    // a v7. Base: las 4 fases usan cálida → siempre no-op.
+    const ph = sim.phase;
+    if (!frozen && ph && ph.progress > 0 && PHASES[ph.index]) {
+      const fromId = PHASES[ph.index].paletteId;
+      const next = PHASES[Math.min(ph.index + 1, PHASES.length - 1)];
+      if (next && next.paletteId !== fromId) {
+        const target = paletteAvg(next.paletteId);
+        if (target) {
+          const k = Math.max(0, Math.min(1, ph.progress));
+          BR[0] = Math.round(BR[0] + (target[0] - BR[0]) * k);
+          BR[1] = Math.round(BR[1] + (target[1] - BR[1]) * k);
+          BR[2] = Math.round(BR[2] + (target[2] - BR[2]) * k);
+        }
+      }
+    }
     const q = Math.round(ct * 48);
     let gx = 0;
     let gy = 0;
@@ -467,9 +576,7 @@ export function drawFrame(ctx, sim, time, staticT) {
     drawPiece(ctx, p, q, outlinePx);
     ctx.restore();
   }
-  // Sombra POR ENCIMA de los cubos, POR DEBAJO del texto (DOM).
-  if (sim.shade) {
-    ctx.fillStyle = sim.shade;
-    ctx.fillRect(0, 0, w, h);
-  }
+  // Sombra POR ENCIMA de los cubos (capa precompuesta), POR DEBAJO del
+  // texto (DOM). Mismo orden y mismos píxeles que antes.
+  if (sim.layers && sim.layers.shade) ctx.drawImage(sim.layers.shade, 0, 0, w, h);
 }

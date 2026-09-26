@@ -11,7 +11,7 @@ test('perf — rAF sostenido, long tasks y memoria durante 5s', async ({
   const errors = [];
   page.on('pageerror', (err) => errors.push(err.message));
   await page.goto('/');
-  const canvas = page.locator('section.hero canvas');
+  const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
   const box = await canvas.boundingBox();
   expect(box.width).toBeGreaterThan(0);
@@ -54,11 +54,11 @@ test('perf — rAF sostenido, long tasks y memoria durante 5s', async ({
             });
           }
           function boxW() {
-            const c = document.querySelector('section.hero canvas');
+            const c = document.querySelector('canvas.hero-canvas');
             return c ? Math.round(c.getBoundingClientRect().width) : 0;
           }
           function boxH() {
-            const c = document.querySelector('section.hero canvas');
+            const c = document.querySelector('canvas.hero-canvas');
             return c ? Math.round(c.getBoundingClientRect().height) : 0;
           }
         };

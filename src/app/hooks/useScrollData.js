@@ -6,7 +6,10 @@ const useScrollData = () => {
     const { setIsFinalScroll, setScrollData, isFinalScroll } = useStore();
 
     useEffect(() => {
-        const handleScroll = () => {
+        let ticking = false;
+        let raf = 0;
+        const handleScrollInner = () => {
+            ticking = false;
             const scrollPosition = window.scrollY; // Posición actual del scroll
             const windowHeight = window.innerHeight; // Altura visible
             const documentHeight = document.documentElement.scrollHeight; // Altura total del documento
@@ -26,11 +29,20 @@ const useScrollData = () => {
                 setIsFinalScroll(false);
             }
         };
+        // rAF-throttle: como máximo una sincronización por frame, sin importar
+        // cuántos eventos de scroll dispare el navegador.
+        const handleScroll = () => {
+            if (!ticking) {
+                ticking = true;
+                raf = requestAnimationFrame(handleScrollInner);
+            }
+        };
 
-        handleScroll();
+        handleScrollInner();
         window.addEventListener("scroll", handleScroll, { passive: true });
 
         return () => {
+            cancelAnimationFrame(raf);
             window.removeEventListener("scroll", handleScroll);
         };
     }, [setIsFinalScroll, setScrollData]);

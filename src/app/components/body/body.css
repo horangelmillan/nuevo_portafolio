@@ -1,5 +1,9 @@
 .body {
     height: 100vh;
-    scroll-snap-type: y mandatory;
-    margin: 0 3em;
+    /* Sin scroll-snap-type aquí: el contenedor de snap es el viewport (html).
+       Este bloque no tiene overflow y nunca llegó a actuar como contenedor. */
+    /* Gutter fluido con techo = 3em desktop validado: idéntico en
+       desktop (4vw a 1440 = 57.6px > 48px → clampa a 3em), estrecha en
+       móvil (360px → 1rem: 328px útiles en vez de 264px). */
+    margin: 0 clamp(1rem, 4vw, 3em);
 }

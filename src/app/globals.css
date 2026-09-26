@@ -12,13 +12,14 @@
   color: #000000;
 }
 
- html {
-  line-height: 1.15; /* 1 */
-  scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
-  scroll-snap-stop: always;
-  -webkit-text-size-adjust: 100%; /* 2 */
-}
+  html {
+   line-height: 1.15; /* 1 */
+   scroll-behavior: smooth;
+   /* SIN scroll-snap-type: medido en E2E que mandatory Y proximity devuelven
+      cada micro-rueda al punto de snap (scroll totalmente atascado con ticks
+      pequeños). scroll-snap-align de section.css queda inerte sin contenedor. */
+   -webkit-text-size-adjust: 100%; /* 2 */
+ }
 
 /* Sections
    ========================================================================== */

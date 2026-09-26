@@ -18,6 +18,11 @@ module.exports = defineConfig({
   projects: [
     { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
     { name: 'mobile', use: { viewport: { width: 390, height: 844 } } },
+    // Matriz responsive (auditoría: el desborde del hero vivía en 360–412px,
+    // rango sin cobertura): Galaxy A55, Pixel 9 y tablet.
+    { name: 'a55', use: { viewport: { width: 360, height: 800 } } },
+    { name: 'pixel9', use: { viewport: { width: 412, height: 924 } } },
+    { name: 'tablet', use: { viewport: { width: 768, height: 1024 } } },
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined

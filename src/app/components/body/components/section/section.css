@@ -18,17 +18,25 @@ section:nth-last-child(1) {
 
 h1 {
     color: #000000;
-    font-size: 4.5rem;
+    /* Fluido con techo = valor desktop validado (4.5rem): idéntico en
+       desktop, reduce en angostos. Piso del checkpoint /hero-lab. */
+    font-size: clamp(2rem, 6vw, 4.5rem);
     margin: 2rem 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
 
 h2 {
     color: #f06023;
-    font-size: 2.5rem
+    font-size: clamp(1.1rem, 3vw, 2.5rem);
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
 
 P {
     color: #525252;
-    font-size: 1.25rem;
+    font-size: clamp(0.95rem, 1.6vw, 1.25rem);
     white-space: pre-line;
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
