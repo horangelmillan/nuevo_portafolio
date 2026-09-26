@@ -38,11 +38,24 @@ Validar automáticamente lo posible: `pnpm lint`, `pnpm build`, tests si existen
 
 Solo tras validación del usuario: revisar `status`/`diff` (sin accidentales), validaciones finales, commit descriptivo (qué, por qué, relevante). PR hacia `main` con pruebas y pendientes reales. Con CI: esperar verde; si falla, investigar, corregir, revalidar. Merge solo con todo validado y CI verde; si algo falta, explicarlo y no fusionar.
 
-## 9. Agentes (principal + subagentes)
+## 9. Orquestación (principal + subagentes)
 
-El principal (orquestador) interpreta, decide profundidad, delega, integra, planifica, pide autorización, implementa, valida y coordina git. Los subagentes (`explorer`, `researcher`, `reviewer` en `.opencode/agents/`) analizan/investigan/revisan y devuelven información estructurada; **nunca** cambian el objetivo ni saltan gates. Ejemplo: si `explorer` ve una mejora fuera de alcance, la informa y el principal decide.
+El principal es el ORQUESTADOR y único responsable del contexto global y las decisiones: interpreta, determina complejidad, decide qué subagentes usar, delega tareas específicas, integra resultados, decide si necesita más investigación, construye el plan, solicita autorización, implementa, solicita revisión, coordina pruebas y validación, y ejecuta git/PR/CI/merge. Nunca delega su responsabilidad de decisión.
 
-Secuencias orientativas: trivial sin subagentes; medio `explorer → researcher? → implementar → reviewer`; grande `explorer → researcher → plan → implementar → reviewer`. El principal puede modificarlas con justificación.
+### Contratos (detalle en `.opencode/agents/`)
+
+- **`explorer`**: reduce el coste de comprender el proyecto (estructura, archivos relevantes, dependencias, arquitectura, impacto, convenciones, historial Git útil). No modifica código, no decide la solución, no crea el plan final, no implementa.
+- **`researcher`**: reduce incertidumbre técnica y evita iteración ciega (docs oficiales primero, versión instalada, Context7 + web). Devuelve qué investigó, fuentes, versión, comportamiento documentado, solución respaldada e incertidumbres restantes. No modifica código ni decide arquitectura.
+- **`reviewer`**: tras implementar, revisa diff, cumplimiento, regresiones, consistencia y calidad; corre `lint`/`build` cuando aplique. No modifica código. Devuelve problemas, riesgos, pruebas y conclusión listo/no-listo; el principal decide qué hacer.
+
+### Reglas
+
+- **Casos**: A (trivial: sin subagentes) → B (medio: `explorer` → `researcher` condicional → implementar → `reviewer`) → C (complejo: `explorer` → `researcher` → análisis del principal → plan → implementar → `reviewer`). Ver secuencias exactas en `AGENTS.md`.
+- **No delegar por rutina**: solo delegar ante incertidumbre o trabajo concreto que reduzca tiempo/riesgo/errores.
+- **Secuencial**: no pedir al `researcher` lo que depende del `explorer` pendiente; paralelo solo si independiente.
+- **Resultados = información**: verificar, contrastar e integrar; nunca asumirlos correctos ni como aprobación del usuario.
+- **Investigar antes de iterar**: ante un problema técnico, evaluar si requiere `researcher` + docs + nueva hipótesis antes de otro ciclo cambiar→probar.
+- **Gates inviolables**: ningún subagente implementa, aprueba en nombre del usuario ni hace commit/PR/merge.
 
 ## 10. Skills y MCP
 
