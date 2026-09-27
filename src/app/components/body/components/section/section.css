@@ -27,7 +27,9 @@ h1 {
 }
 
 h2 {
-    color: #f06023;
+    /* Terracota oscuro de la misma familia cálida: ratio ≥4.5 sobre el
+       degradado #faf5ec→#e9e0cf (el #f06023 anterior daba 2.5–3.0). */
+    color: #b03a0e;
     font-size: clamp(1.1rem, 3vw, 2.5rem);
     max-width: 100%;
     overflow-wrap: break-word;

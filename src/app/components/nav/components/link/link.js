@@ -19,14 +19,12 @@ const Link = () => {
     useTogleBurguerMenu(refLinks);
 
     return (
-        <li>
-            <ul className={`${outfitFont.className} Links`} ref={refLinks}>
-                <button ref={ref1} type="button" data-link="/" ><span>HOME</span><div></div></button>
-                <button ref={ref2} type="button" data-link="/me" ><span>ABOUT</span><div></div></button>
-                <button ref={ref3} type="button" data-link="/projects" ><span>WORK</span><div></div></button>
-                <button ref={ref4} type="button" data-link="/contact" ><span>CONTACT</span><div></div></button>
-            </ul>
-        </li>
+        <ul className={`${outfitFont.className} Links`} ref={refLinks}>
+            <li><button ref={ref1} type="button" data-link="/" ><span>HOME</span><div></div></button></li>
+            <li><button ref={ref2} type="button" data-link="/me" ><span>ABOUT</span><div></div></button></li>
+            <li><button ref={ref3} type="button" data-link="/projects" ><span>WORK</span><div></div></button></li>
+            <li><button ref={ref4} type="button" data-link="/contact" ><span>CONTACT</span><div></div></button></li>
+        </ul>
     );
 };
 

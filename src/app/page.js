@@ -10,11 +10,11 @@ export default function Home() {
   useScrollData();
 
   return (
-    <div className={`${styles.home}`}>
+    <main className={`${styles.home}`}>
       <HeroBackground />
       <Nav></Nav>
       <Body></Body>
       <Footer></Footer>
-    </div>
+    </main>
   );
 }
