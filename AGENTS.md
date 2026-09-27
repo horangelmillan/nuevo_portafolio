@@ -48,7 +48,7 @@ Salida de subagentes: información estructurada y concisa al principal (hallazgo
 
 ## Skills y MCP
 
-Usar skill/MCP solo si aporta valor real, nunca por cumplir. Priorizar docs oficiales versionadas (Context7: `resolve-library-id` → `query-docs`). Skills globales útiles: `ponytail`, `verification-before-completion`, `systematic-debugging`, `webapp-testing`/`playwright-best-practices`, `vercel-*`. Si falta capacidad y la tarea lo justifica: evaluar `skills.sh`, instalar solo lo necesario.
+Usar skill/MCP solo si aporta valor real, nunca por cumplir. MCP disponibles: `context7` (docs oficiales: `resolve-library-id` → `query-docs`), `github` (PRs, issues, checks), `codebase-memory` (grafo del código), `playwright` (regresión E2E), `chrome-devtools` (debug puntual en navegador: traces/perf, consola con source-maps, network, Lighthouse, a11y/LCP), `eslint` (lint). Regla de sinergia: `playwright` afirma regresión (specs en `tests/e2e/`); `chrome-devtools` diagnostica lo puntual (trace, `evaluate_script`, `get_network_request`, auditorías) sin sustituir E2E ni el gate visual del usuario. Skills globales útiles: `ponytail`, `verification-before-completion`, `systematic-debugging`, `webapp-testing`/`playwright-best-practices`, `vercel-*`, más las 7 oficiales de chrome-devtools (`chrome-devtools`, `chrome-devtools-cli`, `troubleshooting`, `a11y-debugging`, `debug-optimize-lcp`, `memory-leak-debugging`, `cookie-debugging` — detalle y cuándo cargarlas en el AGENTS.md global). Si falta capacidad y la tarea lo justifica: evaluar `skills.sh`, instalar solo lo necesario.
 
 ## Hallazgos y continuidad
 

@@ -15,7 +15,7 @@ Comportamientos (iteración por sección con aprobación visual, como fases 1–
 | Sección | Estado | Comportamiento |
 |---|---|---|
 | Hero | ✅ aprobado (v7 integrado) | Pila desordenada actual, regresión intacta |
-| Sobre mí | 🔲 por diseñar | Embudo + lluvia: al bajar, los cubos son atraídos a un punto móvil (boca del embudo), caen como regadera, se desvanecen abajo y reaparecen arriba (loop sin acumulación real) |
+| Sobre mí | 🔲 por diseñar | Continuidad por presencia (etapa 1 en gate visual; embudo abandonado): al bajar, los cubos se retiran con fade determinista y quedan 3-4 supervivientes. Paletas por seccion en etapa 2.
 | Proyectos | 🔲 por diseñar | TBD con el usuario |
 | Contacto | 🔲 por diseñar | TBD con el usuario |
 
@@ -95,6 +95,18 @@ aprueba por el usuario ni toca git.
   siempre activo; `backdrop-filter` de la nav sobre canvas (coste medido en
   trace: no tocar sin evidencia nueva); `transition:none` en nav ya descartado
   como fix por el usuario.
+
+### Debug puntual con `chrome-devtools` (no sustituye E2E ni gate visual)
+
+Recetas ancladas a los riesgos de arriba; skill entre paréntesis:
+
+- Jank GPU/compositor (frames ~1.1s, `ESTADO.md` §decisiones): `performance_start_trace` (`reload:true`, `autoStop:true`) → `performance_analyze_insight` (`LCPBreakdown`/`DocumentLatency`/`RenderBlocking`). Solo decide el trace en máquina del usuario (headless = raster por software). (`debug-optimize-lcp`)
+- Coste `backdrop-filter` nav: trace + `list_network_requests` (fonts/blur) antes de tocar nada. (`chrome-devtools`)
+- Doble `Outfit` + offsets solo en resize: `lighthouse_audit` (`mode:navigation`) + `DocumentLatency`/`RenderBlocking`. (`debug-optimize-lcp`)
+- Contraste por sección (texto HTML sobre canvas): `take_snapshot` (árbol a11y) + `list_console_messages` (`types:["issue"]`, `includePreservedMessages:true`). (`a11y-debugging`)
+- Error en consola con origen real: `list_console_messages`/`get_console_message` (stack con source-maps → `HeroBackground.jsx`/`hero-field.js`), más preciso que `msg.text()` de `hero.spec.js`. (`chrome-devtools`)
+- Memoria canvas (si hay OOM): `take_heapsnapshot` → `compare_heapsnapshots` → `retainers`/`dominators` → `close_heapsnapshot`. (`memory-leak-debugging`)
+- No aplica aquí: `cookie-debugging` (sitio estático sin auth/sesión).
 
 ## 9. Entrypoint sesión de mañana
 

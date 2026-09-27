@@ -36,7 +36,7 @@ Validar automáticamente lo posible: `pnpm lint`, `pnpm build`, tests si existen
 
 ## 8. Git / PR / CI / Merge
 
-Solo tras validación del usuario: revisar `status`/`diff` (sin accidentales), validaciones finales, commit descriptivo (qué, por qué, relevante). PR hacia `main` con pruebas y pendientes reales. Con CI: esperar verde; si falla, investigar, corregir, revalidar. Merge solo con todo validado y CI verde; si algo falta, explicarlo y no fusionar.
+Solo tras validación del usuario: revisar `status`/`diff` (sin accidentales), validaciones finales, commit descriptivo (qué, por qué, relevante). PR hacia `main` con pruebas y pendientes reales (vía MCP `github`, incluyendo estado de checks). Con CI: esperar verde; si falla, investigar, corregir, revalidar. Merge solo con todo validado y CI verde; si algo falta, explicarlo y no fusionar.
 
 ## 9. Orquestación (principal + subagentes)
 
@@ -60,3 +60,10 @@ El principal es el ORQUESTADOR y único responsable del contexto global y las de
 ## 10. Skills y MCP
 
 Evaluar en cada fase qué skill/MCP aporta valor (docs, GitHub, búsqueda, inspección, validación). Context7 para documentación versionada; GitHub para PR/issues/CI; skills globales (`ponytail`, `systematic-debugging`, `verification-before-completion`, `webapp-testing`, `vercel-*`) cuando apliquen. `skills.sh` solo si falta capacidad y la tarea lo justifica. Nada por cumplir.
+
+### Sinergia `playwright` / `chrome-devtools` (navegador)
+
+- `playwright` (`tests/e2e/`) = regresión afirmable en CI/dev: lo que rompe el build si falla.
+- `chrome-devtools` = diagnóstico puntual no afirmable en CI: traces de perf (`performance_start_trace` con `reload` + `performance_analyze_insight` `LCPBreakdown`/`DocumentLatency`/`RenderBlocking`), consola con source-maps (`list_console_messages`), network (`list_network_requests` + `get_network_request`), Lighthouse (`lighthouse_audit mode:navigation`), árbol a11y (`take_snapshot`).
+- Cargar la skill oficial correspondiente antes de usar (ver AGENTS.md global): `chrome-devtools` (base), `debug-optimize-lcp` (LCP/CWV), `a11y-debugging` (a11y), `memory-leak-debugging` (requiere `--memoryDebugging=true` en `opencode.jsonc`), `troubleshooting` (si `list_pages`/`new_page` falla), `chrome-devtools-cli` (terminal).
+- Límite: headless no reproduce GPU (ver `FONDO-GLOBAL.md` §8); el trace que decide es en máquina del usuario. Nunca sustituye E2E ni el gate visual del usuario.
