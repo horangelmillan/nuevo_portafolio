@@ -6,6 +6,13 @@ li {
     display: flex;
 }
 
+/* Los li replican el reparto flex que antes tenían los botones directos. */
+.Links>li {
+    flex: 1 1 0;
+    display: flex;
+    min-width: 0;
+}
+
 .Links span {
     padding: 1rem 0rem;
     margin: 0;
@@ -32,7 +39,7 @@ li {
     text-align: center;
 }
 
-.Links>button:hover>div {
+.Links button:hover>div {
     width: 5rem;
 }
 
