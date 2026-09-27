@@ -1,11 +1,9 @@
 "use client";
 import { useRef } from 'react';
-import { Outfit } from 'next/font/google';
+import { outfit as outfitFont } from "../../../../fonts";
 import useCrossOutLink from './hooks/useCrossOutLink';
 import './link.css';
 import useTogleBurguerMenu from './hooks/useTogleBurguerMenu';
-
-const outfitFont = Outfit({ subsets: ['latin'], weight: ['400', '700'] });
 
 const Link = () => {
 
