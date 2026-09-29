@@ -18,26 +18,27 @@ section:nth-last-child(1) {
 
 h1 {
     color: #000000;
-    /* Fluido con techo = valor desktop validado (4.5rem): idéntico en
-       desktop, reduce en angostos. Piso del checkpoint /hero-lab. */
-    font-size: clamp(2rem, 6vw, 4.5rem);
+    /* Más presencia sobre el fondo animado; el clamp protege angostos. */
+    font-size: clamp(2.4rem, 7vw, 5.5rem);
     margin: 2rem 0;
     max-width: 100%;
     overflow-wrap: break-word;
 }
 
 h2 {
-    /* Terracota oscuro de la misma familia cálida: ratio ≥4.5 sobre el
-       degradado #faf5ec→#e9e0cf (el #f06023 anterior daba 2.5–3.0). */
-    color: #b03a0e;
-    font-size: clamp(1.1rem, 3vw, 2.5rem);
+    /* #cf4409: naranja vivo que pasa como texto grande (≥3.0); el mínimo
+       1.5rem (=24px) lo califica como grande en todos los viewports. */
+    color: #cf4409;
+    font-size: clamp(1.5rem, 3.4vw, 3rem);
     max-width: 100%;
     overflow-wrap: break-word;
 }
 
 P {
     color: #525252;
-    font-size: clamp(0.95rem, 1.6vw, 1.25rem);
+    /* Fuente del título (Outfit vía className en section.js): palo seco
+       geométrico, legible sobre el fondo animado. */
+    font-size: clamp(1rem, 1.8vw, 1.4rem);
     white-space: pre-line;
     max-width: 100%;
     overflow-wrap: break-word;
