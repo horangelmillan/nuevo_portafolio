@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import useStore from "../store/store";
 
 const useScrollData = () => {
-    const { setIsFinalScroll, setScrollData, isFinalScroll } = useStore();
+    const { setIsFinalScroll, setScrollData, isFinalScroll, setActiveSection } = useStore();
 
     useEffect(() => {
         let ticking = false;
@@ -28,6 +28,12 @@ const useScrollData = () => {
             } else {
                 setIsFinalScroll(false);
             }
+
+            // Sección activa (0=hero..3=contacto): la nav resalta por scroll,
+            // no por ruta (SPA de una sola página). El selector del
+            // consumidor evita re-renders si el valor repite.
+            const idx = Math.max(0, Math.min(3, Math.round(scrollPosition / windowHeight)));
+            setActiveSection(idx);
         };
         // rAF-throttle: como máximo una sincronización por frame, sin importar
         // cuántos eventos de scroll dispare el navegador.
@@ -45,7 +51,7 @@ const useScrollData = () => {
             cancelAnimationFrame(raf);
             window.removeEventListener("scroll", handleScroll);
         };
-    }, [setIsFinalScroll, setScrollData]);
+    }, [setIsFinalScroll, setScrollData, setActiveSection]);
 };
 
 export default useScrollData;
