@@ -1,6 +1,8 @@
 section {
     height: calc(100vh); /* 100vh de altura de pantalla, 5rem de la barra de navegacion y 2px de los bordes */
     scroll-snap-align: start;
+    /* La nav fija (~93px) no tapa el inicio al navegar por scroll. */
+    scroll-margin-top: 100px;
 }
 
 section:nth-child(1) {
