@@ -16,7 +16,7 @@ export default function Section({ sectionType = "plain", title, subtitle, conten
       <div className={"section-content"}>
         <h1 className={outfit.className}>{title}</h1>
         <h2 className={cinzel.className}>{subtitle}</h2>
-        <p>
+        <p className={outfit.className}>
           {content}
         </p>
       </div>
