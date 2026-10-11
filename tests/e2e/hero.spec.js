@@ -69,7 +69,7 @@ test('3 — texto real como HTML, no dibujado en canvas', async ({ page }) => {
   expect(desc.length).toBeGreaterThan(20);
   // Un único canvas global; ningún canvas dentro de secciones.
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
   expect(await hero.locator('canvas h1, canvas p').count()).toBe(0);
   expect(errors).toEqual([]);
 });
@@ -117,7 +117,7 @@ test('6 — solo la primera sección es hero; canvas único global', async ({ pa
   const { errors } = await gotoClean(page, '/');
   expect(await page.locator('section.section').count()).toBe(4);
   expect(await page.locator('section.hero').count()).toBe(1);
-  expect(await page.locator('section.section canvas').count()).toBe(0);
+  expect(await page.locator('section.section canvas:not(.project-blob)').count()).toBe(0);
   expect(await page.locator('.global-background canvas.hero-canvas').count()).toBe(1);
   expect(errors).toEqual([]);
 });

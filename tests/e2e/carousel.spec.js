@@ -29,8 +29,12 @@ test('carrusel — renderiza 4 tarjetas, flechas y estado inicial', async ({ pag
   // determinista en todos los viewports) y la anterior nace deshabilitada.
   expect(idx).toBe(0);
   await expect(page.locator('.carousel-ctrl.left')).toBeDisabled();
-  // Sin canvas propio: el gate `section canvas = 0` de hero/fondo sigue valiendo.
-  expect(await page.locator('section.section canvas').count()).toBe(0);
+  // Sin canvas ajeno: el gate `section canvas = 0` sigue valiendo para todo
+  // lo que no sea el blob intencional (.project-blob, A2).
+  expect(await page.locator('section.section canvas:not(.project-blob)').count()).toBe(0);
+  // Fade en bordes: las tarjetas se desvanecen, no se cortan en duro.
+  const mask = await page.locator('.carousel-view').evaluate((el) => getComputedStyle(el).maskImage);
+  expect(mask).toContain('linear-gradient');
 });
 
 test('carrusel — flecha derecha avanza exactamente una tarjeta', async ({ page }) => {

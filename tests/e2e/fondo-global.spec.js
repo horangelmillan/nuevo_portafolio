@@ -20,7 +20,7 @@ test('fondo — canvas único fijo a viewport, siempre visible', async ({
   const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
   const fixed = await page.evaluate(() => {
     const g = document.querySelector('.global-background');
     return g ? getComputedStyle(g).position : null;

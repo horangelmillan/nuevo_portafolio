@@ -69,3 +69,35 @@ export const PHYS = {
   maxScale: 1.12,
   minOpacity: 0.5,
 };
+
+/*
+ * Identidad orgánica por proyecto (A2): cada tarjeta tiene su propia forma
+ * objetivo (amplitudes/fases de los armónicos). Al cambiar la activa, la
+ * forma morfea hacia la destino y el color transiciona a su acento (~0.8s,
+ * como los tintes de referencia). Formas originales, no los paths del autor.
+ */
+export const BLOB_SHAPES = [
+  { amp1: 0.1, amp2: 0.05, sx: 1.0, sy: 1.0 }, // redonda base
+  { amp1: 0.06, amp2: 0.11, sx: 0.94, sy: 1.1 }, // pera vertical
+  { amp1: 0.13, amp2: 0.03, sx: 1.12, sy: 0.92 }, // apaisada
+  { amp1: 0.09, amp2: 0.08, sx: 1.02, sy: 1.04 }, // casi redonda viva
+];
+
+export const BLOB = {
+  // Asentamiento exponencial ≈ tintes .8s de referencia (tuning propio).
+  settleRate: 3.5,
+  // Radio = lo que quepa (ancho ×0.30 y espacio libre sobre/bajo el ancla
+  // menos la sombra), acotado [minR, maxR]: nunca recorta en ningún viewport.
+  widthFrac: 0.3,
+  minR: 80,
+  maxR: 340,
+  shadowBlur: 70,
+  // Respiración (escala global lenta, SIN rotación) + deriva del centro.
+  breathAmp: 0.025,
+  breathPeriod: 7,
+  driftPx: 18,
+  driftPeriod: 9,
+  // Presencia sin molestar: alfa del relleno (las tarjetas son casi opacas).
+  fillAlpha: 0.9,
+  dprCap: 2,
+};
