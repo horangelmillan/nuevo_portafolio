@@ -21,4 +21,7 @@
     width: 100%;
     height: 5.5rem;
     transition: all 0.7s;
+    /* Por encima del contenido (las secciones opacas viven en el contexto
+       z:1 de .body y lo taparían sin esto). Nav sigue por encima (9999). */
+    z-index: 10;
 }

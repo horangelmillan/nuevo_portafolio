@@ -35,7 +35,7 @@ h1 {
 h2 {
     /* #cf4409: naranja vivo que pasa como texto grande (≥3.0); el mínimo
        1.5rem (=24px) lo califica como grande en todos los viewports. */
-    color: #cf4409;
+    color: #dd4e11;
     font-size: clamp(1.5rem, 3.4vw, 3rem);
     max-width: 100%;
     overflow-wrap: break-word;

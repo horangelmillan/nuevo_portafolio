@@ -37,6 +37,8 @@ export const PALETTES = {
 
 export const PHASES = [
   { id: "hero", paletteId: "calida" },
+  // STAGE2 (paletas por sección): fría elegida para sobre-mí. Etapa 1 sin
+  // cambio de paleta → cálida en todas para validar solo la presencia.
   { id: "sobre-mi", paletteId: "calida" },
   { id: "proyectos", paletteId: "calida" },
   { id: "contacto", paletteId: "calida" },
@@ -60,27 +62,34 @@ export function getPhaseForScroll(scrollY, offsets, vh) {
     if (o && y >= o.bottom) index = Math.min(i + 1, offsets.length - 1);
   }
   index = Math.max(0, Math.min(offsets.length - 1, index));
-  const top = offsets[index] ? offsets[index].top : scrollY;
-  const progress = Math.max(0, Math.min(1, (scrollY - top) / vh));
+  const o = offsets[index];
+  const top = o ? o.top : scrollY;
+  // Pose: travesía del centro por la sección (0 entra → 1 sale). Color:
+  // blend continuo por scrollY (el progress se reinicia por sección y
+  // produciría un pop en el borde).
+  const height = o ? Math.max(1, o.bottom - o.top) : vh;
+  const progress = Math.max(0, Math.min(1, (y - top) / height));
+  const blend = smootherstep(Math.max(0, Math.min(1, scrollY / vh)));
   const id = (PHASES[index] || PHASES[0]).id;
-  return { index, id, progress };
+  return { index, id, progress, blend };
 }
 
-function paletteAvg(paletteId) {
-  const pal = PALETTES[paletteId];
-  if (!pal) return null;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  for (const hex of pal.colors) {
-    const [cr, cg, cb] = hexToRgb(hex);
-    r += cr;
-    g += cg;
-    b += cb;
-  }
-  const n = Math.max(1, pal.colors.length);
-  return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+function smootherstep(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * x * (x * (x * 6 - 15) + 10);
 }
+
+
+function frac(x) {
+  return x - Math.floor(x);
+}
+
+function clamp01(x) {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
+// Nota: el hero no usa lógica ligada al scroll; el único efecto espacial
+// es el cierre inferior (rampa de alfa en drawFrame).
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -254,16 +263,21 @@ export function makeField({
 
   // Clusters anclados alrededor de la safe zone: masas a izquierda/derecha,
   // esquinas, arriba/abajo. Simétricos para no favorecer ninguna zona.
+  // NOTA: zone llega como {text, h1} (lo usa satisfies()); los slots usan el
+  // rect plano del texto. Sin esto los clusters salían NaN y ~mitad de piezas
+  // quedaban invisibles (en móvil ~80%). No añade ni reordena rand(): la
+  // secuencia del RNG queda intacta, solo los valores son finitos.
+  const zt = zone && zone.text ? zone.text : zone;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const slots = [
-    [zone.x0 * 0.5, h * 0.5],
-    [(zone.x1 + w) / 2, h * 0.5],
+    [zt.x0 * 0.5, h * 0.5],
+    [(zt.x1 + w) / 2, h * 0.5],
     [w * 0.22, h * 0.14],
     [w * 0.78, h * 0.14],
     [w * 0.22, h * 0.87],
     [w * 0.78, h * 0.87],
-    [w * 0.5, Math.max(h * 0.07, zone.y0 - h * 0.16)],
-    [w * 0.5, Math.min(h * 0.93, zone.y1 + h * 0.14)],
+    [w * 0.5, Math.max(h * 0.07, zt.y0 - h * 0.16)],
+    [w * 0.5, Math.min(h * 0.93, zt.y1 + h * 0.14)],
   ];
   const order = mobile ? [0, 1, 7] : [0, 1, 2, 3, 4, 5, 6, 7];
   const clusterCount = mobile ? 3 : w < 1200 ? 6 : 8;
@@ -358,6 +372,22 @@ export function makeField({
     }
   }
   pieces.sort((a, b) => a.depth - b.depth);
+  // Cierre inferior por diseño (sin scroll, sin estado, sin RNG): comprime
+  // la banda baja hacia arriba y topa tamaños. El borde nace ralo con piezas
+  // pequeñas; la deriva lo redistribuye con el tiempo y la rampa de alfa
+  // runtime (drawFrame) lo garantiza siempre. Solo toca la banda baja.
+  const capEdge = Math.min(220, u * 0.3);
+  for (const p of pieces) {
+    if (p.y <= h * 0.78) continue;
+    p.y = h * 0.78 + (p.y - h * 0.78) * 0.35;
+    const kk = 1 - 0.75 * smootherstep((p.y - h * 0.7) / (h * 0.25));
+    const ns = Math.max(8, Math.min(p.s * kk, capEdge));
+    if (ns < p.s) {
+      p.s = ns;
+      p.geom = buildGeom(p.s, p.wRatio, p.bodyRatio, p.jit);
+      p.paths = buildPaths(p.geom);
+    }
+  }
   return { pieces, clusters };
 }
 
@@ -517,7 +547,15 @@ export function drawFrame(ctx, sim, time, staticT) {
   const sp = frozen ? 0 : sim.params.speed;
   const colorTime = t * (0.25 + 0.75 * sim.params.speed);
   const outlineBase = sim.params.outlinePct / 100;
-  for (const p of sim.pieces) {
+  // Los gradientes se cachean por quantum de color (q): al cambiar de fase
+  // la base cambia sin que q lo haga → invalidar una vez por fase.
+  const gradPhase = sim.phase ? sim.phase.id : "";
+  if (sim.gradPhase !== gradPhase) {
+    sim.gradPhase = gradPhase;
+    for (const p of sim.pieces) p.gcache = null;
+  }
+  for (let idx = 0; idx < sim.pieces.length; idx++) {
+    const p = sim.pieces[idx];
     const ct = frozen
       ? 0.6
       : (Math.sin((colorTime * Math.PI * 2) / p.period + p.phase) + 1) / 2;
@@ -529,24 +567,43 @@ export function drawFrame(ctx, sim, time, staticT) {
     BR[0] = Math.round(A[0] + (B[0] - A[0]) * ct);
     BR[1] = Math.round(A[1] + (B[1] - A[1]) * ct);
     BR[2] = Math.round(A[2] + (B[2] - A[2]) * ct);
-    // Morph de paleta por fase (segundo eje sobre el actual): con fase hero
-    // o progreso 0 o misma paleta origen/destino se omite → píxeles idénticos
-    // a v7. Base: las 4 fases usan cálida → siempre no-op.
+    // Morph de paleta por fase (segundo eje sobre el actual): mezcla hacia
+    // colores destino por pieza (índice estable, sin RNG) con factor k =
+    // blend continuo (0 en hero arriba → 1 tras el primer viewport). En hero
+    // con blend 0 se omite → píxeles idénticos a v7.
     const ph = sim.phase;
-    if (!frozen && ph && ph.progress > 0 && PHASES[ph.index]) {
-      const fromId = PHASES[ph.index].paletteId;
-      const next = PHASES[Math.min(ph.index + 1, PHASES.length - 1)];
-      if (next && next.paletteId !== fromId) {
-        const target = paletteAvg(next.paletteId);
-        if (target) {
-          const k = Math.max(0, Math.min(1, ph.progress));
-          BR[0] = Math.round(BR[0] + (target[0] - BR[0]) * k);
-          BR[1] = Math.round(BR[1] + (target[1] - BR[1]) * k);
-          BR[2] = Math.round(BR[2] + (target[2] - BR[2]) * k);
-        }
+    const kMix =
+      ph && typeof ph.blend === "number"
+        ? Math.max(0, Math.min(1, ph.blend))
+        : 0;
+    let destPal = null;
+    if (kMix > 0 && ph && PHASES[ph.index]) {
+      const targetId =
+        ph.index === 0 ? PHASES[1].paletteId : PHASES[ph.index].paletteId;
+      if (targetId && targetId !== PHASES[0].paletteId)
+        destPal = PALETTES[targetId];
+    }
+    if (kMix > 0 && destPal) {
+      const cols = destPal.colors;
+      const hex = cols[idx % cols.length];
+      if (p.destKey !== hex) {
+        p.destRgb = hexToRgb(hex);
+        p.destKey = hex;
       }
+      const D = p.destRgb;
+      BR[0] = Math.round(BR[0] + (D[0] - BR[0]) * kMix);
+      BR[1] = Math.round(BR[1] + (D[1] - BR[1]) * kMix);
+      BR[2] = Math.round(BR[2] + (D[2] - BR[2]) * kMix);
     }
     const q = Math.round(ct * 48);
+    // Cierre inferior del hero: rampa de alfa por profundidad, ESTÁTICA
+    // (sin scroll, sin estado). Cada pieza tiene umbral propio
+    // determinista → borde irregular y natural. Por encima de la zona
+    // (80% superior) no se toca nada → hero idéntico. El fondo (bg+sombra)
+    // sigue intacto hasta el borde; la deriva/respiración continúan.
+    const fz0 = h * 0.8;
+    const fz1 = h * 0.99;
+    const zt = fz0 + frac(idx * 0.61803398875) * (fz1 - fz0) * 0.5;
     let gx = 0;
     let gy = 0;
     if (!frozen && p.cluster >= 0) {
@@ -562,6 +619,8 @@ export function drawFrame(ctx, sim, time, staticT) {
     const px = p.x + gx;
     const py = p.y + gy;
     if (px < -cm || px > w + cm || py < -cm || py > h + cm) continue;
+    const za = 1 - smootherstep((py - zt) / (fz1 - zt));
+    if (za <= 0.01) continue;
     const breath = frozen
       ? 1
       : 1 + Math.sin(t * p.breathFreq * Math.PI * 2 + p.phase) * p.breathAmp * sp;
@@ -573,10 +632,19 @@ export function drawFrame(ctx, sim, time, staticT) {
     ctx.translate(px, py);
     ctx.rotate(rot);
     ctx.scale(breath, breath);
+    // Alfa del cierre (por encima de la zona za=1 → no se toca → idéntico).
+    if (za < 0.999) ctx.globalAlpha = za;
     drawPiece(ctx, p, q, outlinePx);
     ctx.restore();
   }
   // Sombra POR ENCIMA de los cubos (capa precompuesta), POR DEBAJO del
   // texto (DOM). Mismo orden y mismos píxeles que antes.
   if (sim.layers && sim.layers.shade) ctx.drawImage(sim.layers.shade, 0, 0, w, h);
+  // Velo inferior (construido por resize, tono plano = fondo de las
+  // secciones): garantiza que nada sólido cruce el borde; el alfa por pieza
+  // aporta la irregularidad encima. Sin scroll, sin estado, 1 fill/frame.
+  if (sim.veil) {
+    ctx.fillStyle = sim.veil;
+    ctx.fillRect(0, h * 0.78, w, h * 0.22 + 1);
+  }
 }

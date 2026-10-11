@@ -25,7 +25,7 @@ mediante mezcla por progreso de scroll.
 ## 2. Decisiones ya tomadas (no reabrir sin motivo)
 
 - Geometría prod: `cubos`; fondo full-bleed (compensa `.body margin 0 3em`).
-- `/hero-lab` intacto y untracked: checkpoint, NO borrar hasta validación posterior.
+- Checkpoint `/hero-lab` eliminado tras validación (2026-10-11).
 - Móvil: fondo siempre pintando (sin pausa offscreen).
 - Tope presentación 30fps con física intacta (anti-jank GPU, aprobado tras trace).
 - Scroll: sin `scroll-snap-type` (medido: mandatory y proximity devuelven micro-ruedas);
@@ -66,8 +66,7 @@ Equivalencia: manual 260×200% → topes 260 desktop / 140 móvil (caps del moto
 ## 6. Workflow por comportamiento (repetir por sección)
 
 1. `explorer`: archivos implicados (solo lectura).
-2. Diseñar en laboratorio: añadir selector de fase + slider de progreso a
-   `/hero-lab` (temporal) para previsualizar fase y transiciones.
+2. Diseñar en laboratorio temporal para previsualizar fase y transiciones.
 3. Iterar hasta **aprobación visual explícita** del usuario (gate).
 4. Integrar fase en el motor + `reviewer` (diff, lint, build).
 5. E2E: fase visible al hacer scroll, sin regresión de contraste/RM/responsive.
