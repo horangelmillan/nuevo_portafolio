@@ -80,6 +80,7 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       const viewCenter = sim.viewW / 2;
       track.style.transform = `translate3d(${sim.x}px,0,0)`;
       track.dataset.offset = String(Math.round(sim.x));
+      track.dataset.settled = !sim.tween && !sim.dragging && sim.v === 0 ? "1" : "0";
       const els = cards();
       for (let i = 0; i < els.length; i++) {
         const prox = proximity(sim.centers[i] + sim.x, viewCenter, sim.viewW);
@@ -289,7 +290,7 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       tabIndex={0}
     >
       <div ref={viewRef} className="carousel-view">
-        <ul ref={trackRef} className="carousel-track" data-offset="0">
+        <ul ref={trackRef} className="carousel-track" data-offset="0" data-settled="1">
           {items.map((it, i) => (
             <li
               key={it.title}

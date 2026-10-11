@@ -1,0 +1,31 @@
+/* RevealText (Sobre mí): medida de lectura, cuerpo mayor y frase de cierre.
+   Los spans son opacos por defecto (sin JS / reduced-motion = texto íntegro);
+   el JS solo baja/animan opacidad cuando hay movimiento. */
+
+.reveal-text {
+    max-width: 65ch;
+    font-size: clamp(1.15rem, 2.2vw, 1.6rem);
+    line-height: 1.7;
+    color: #000000;
+}
+
+.reveal-text [data-w] {
+    opacity: 1;
+}
+
+.reveal-text [data-a] {
+    color: #cf4409;
+}
+
+.reveal-text a[data-w] {
+    text-underline-offset: 3px;
+}
+
+.reveal-closing {
+    max-width: 65ch;
+    color: #cf4409;
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    line-height: 1.4;
+    font-weight: 600;
+    margin-top: 1.5rem;
+}

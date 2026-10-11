@@ -7,6 +7,10 @@ test.setTimeout(60000);
 
 async function gotoProyectos(page) {
   await page.goto('/');
+  // El preloader (A3) bloquea puntero al inicio: esperar su salida.
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   await page.evaluate(() => {
     document.querySelectorAll('section.section')[2].scrollIntoView({ block: 'center' });
   });
@@ -66,7 +70,13 @@ test('carrusel — drag horizontal mueve la pista', async ({ page }) => {
   }
   await page.mouse.up();
   // Tras el snap, la pista quedó bajo cero y la tarjeta activa centrada.
-  await page.waitForTimeout(1200);
+  // Espera por estado (asentado), no por timeout fijo: bajo carga paralela
+  // los frames rinden menos y el tiempo fijo era flaky.
+  await page.waitForFunction(
+    () => document.querySelector('.carousel-track').dataset.settled === '1',
+    null,
+    { timeout: 8000 }
+  );
   const after = await offsetX(page);
   expect(after).toBeLessThan(before);
   const misalign = await page.evaluate(() => {
@@ -94,7 +104,11 @@ test('carrusel — drags repetidos hasta el final centran la última', async ({ 
       await page.waitForTimeout(16);
     }
     await page.mouse.up();
-    await page.waitForTimeout(1000);
+    await page.waitForFunction(
+      () => document.querySelector('.carousel-track').dataset.settled === '1',
+      null,
+      { timeout: 8000 }
+    );
   }
   // La última centra (el tope ya no "bloquea": el snap la lleva al centro)
   // y la flecha siguiente queda deshabilitada.

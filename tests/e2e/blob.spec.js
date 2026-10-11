@@ -5,6 +5,10 @@ test.setTimeout(60000);
 
 async function gotoProyectos(page) {
   await page.goto('/');
+  // El preloader (A3) bloquea puntero al inicio: esperar su salida.
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   await page.evaluate(() => {
     document.querySelectorAll('section.section')[2].scrollIntoView({ block: 'center' });
   });

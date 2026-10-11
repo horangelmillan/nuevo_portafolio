@@ -31,6 +31,29 @@ li {
     justify-content: center;
 }
 
+/* Color por sección (en el SPAN: el `* {color:#000}` de globals aplica
+   directo al span y gana a cualquier herencia del button). Negro sobre
+   secciones claras, blanco sobre el hero oscuro, con fundido. Letras un
+   poco mayores (1.15rem, hereda el span). */
+.Navbar .Links button {
+    font-size: 1.15rem;
+}
+
+.Navbar .Links span {
+    color: #000000;
+    transition: color 0.5s ease;
+}
+
+.Navbar.on-hero .Links span {
+    color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .Navbar .Links span {
+        transition: none;
+    }
+}
+
 .Links div {
     position: absolute;
     border-bottom: 2px solid rgb(204, 137, 13);
@@ -74,8 +97,8 @@ li {
         flex-direction: column;
     }
 
-    .Links span {
-        transition: transform 2s, opacity 2s;
+    .Navbar .Links span {
+        transition: transform 2s, opacity 2s, color 0.5s ease;
         /* Aseguramos que haya una transición */
     }
 

@@ -1,0 +1,155 @@
+/* Overlay About A3: backdrop + panel deslizante (.55s, curva tipo Power3.out).
+   Cerrado = visibility hidden + sin puntero (sin desmontar, para animar). */
+
+.about-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    visibility: hidden;
+    pointer-events: none;
+    /* La salida también anima: la visibilidad espera al fundido (.55s). */
+    transition: visibility 0s linear 0.55s;
+}
+
+.about-overlay.open {
+    visibility: visible;
+    pointer-events: auto;
+    transition: none;
+}
+
+.about-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(12, 12, 19, 0.45);
+    opacity: 0;
+    transition: opacity 0.45s ease-out;
+}
+
+.about-overlay.open .about-backdrop {
+    opacity: 1;
+}
+
+.about-panel {
+    position: absolute;
+    /* Debajo de la nav real (--nav-h la fija el overlay al abrir/colapsar):
+       la nav (z 9999) ya no interrumpe el borde superior del panel. */
+    top: var(--nav-h, 84px);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: none;
+    overflow-y: auto;
+    background: #faf5ec;
+    border-radius: 10px 10px 0 0;
+    padding: 2rem clamp(1.25rem, 5vw, 3rem) 2.5rem;
+    transform: translateY(40px);
+    opacity: 0;
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease-out, visibility 0s 0.55s;
+    visibility: hidden;
+}
+
+.about-overlay.open .about-panel {
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease-out;
+}
+
+@media (min-width: 768px) {
+    .about-panel {
+        top: max(9vh, var(--nav-h, 88px));
+        bottom: auto;
+        left: auto;
+        right: 8vw;
+        width: min(430px, 90vw);
+        max-height: calc(100vh - var(--nav-h, 88px) - 4vh);
+        border-radius: 10px;
+    }
+}
+
+.about-close {
+    border: 0;
+    background: transparent;
+    color: #000000;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    opacity: 0.7;
+}
+
+.about-close:hover {
+    opacity: 1;
+}
+
+.about-close:focus-visible,
+.about-links button:focus-visible,
+.about-links a:focus-visible,
+.about-goto:focus-visible {
+    outline: 2px solid #cf4409;
+    outline-offset: 2px;
+}
+
+.about-label {
+    color: #525252;
+    margin: 1rem 0 0;
+}
+
+.about-panel h2 {
+    color: #000000;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin: 0.25rem 0 1rem;
+}
+
+.about-bio {
+    color: #525252;
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    margin: 0 0 0.75rem;
+}
+
+.about-links {
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.about-links button,
+.about-links a {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #cf4409;
+    font-size: 1.1rem;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-align: left;
+}
+
+.about-mail {
+    color: #525252;
+    font-size: 0.95rem;
+    margin-left: 0.75rem;
+}
+
+.about-goto {
+    margin-top: 1.5rem;
+    border: 1px solid #000000;
+    background: transparent;
+    color: #000000;
+    border-radius: 999px;
+    padding: 0.6rem 1.25rem;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-overlay,
+    .about-backdrop,
+    .about-panel,
+    .about-overlay.open .about-panel {
+        transition: none;
+    }
+}

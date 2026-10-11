@@ -11,6 +11,10 @@ async function gotoClean(page, url) {
   });
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
   const resp = await page.goto(url);
+  // El preloader (A3) bloquea puntero al inicio: esperar su salida.
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   return { resp, errors };
 }
 

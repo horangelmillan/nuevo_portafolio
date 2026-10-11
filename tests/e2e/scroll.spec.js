@@ -1,105 +1,55 @@
-// Diagnóstico del scroll hacia el hero: mide la dinámica real (trayectoria,
-// parones, dientes de sierra) en vez de afirmar sensaciones.
-// No modifica la app; solo instrumenta y reporta métricas en el log.
+// Snap por secciones (decisión usuario 2026-10-11): cada gesto de rueda
+// centra UNA sección (como la nav). El CSS puro se descartó medido (atasco).
+// Estos tests afirman la nueva semántica; el dogfood fluido anterior se fue
+// con ella. Sin modificar la app; solo instrumenta y reporta.
 const { test, expect } = require('@playwright/test');
 
 test.setTimeout(90000);
 
-// Muestrea scrollY por rAF durante `ms` mientras el llamante inyecta input.
-function startTrace(page, ms) {
-  return page.evaluate(
-    (dur) =>
-      new Promise((res) => {
-        const samples = [];
-        const t0 = performance.now();
-        const loop = (now) => {
-          samples.push([Math.round(now - t0), Math.round(window.scrollY)]);
-          if (now - t0 < dur) requestAnimationFrame(loop);
-          else res(samples);
-        };
-        requestAnimationFrame(loop);
-      }),
-    ms
+// Espera a que el scroll se asiente en la banda (luego un margen cubre el
+// lock de 800ms antes del siguiente gesto).
+async function settleBand(page, target, band = 80) {
+  await page.waitForFunction(
+    ([t, b]) => Math.abs(window.scrollY - t) < b,
+    [target, band],
+    { timeout: 8000 }
   );
+  await page.waitForTimeout(900);
+  const y = await page.evaluate(() => window.scrollY);
+  expect(Math.abs(y - target)).toBeLessThan(band);
 }
 
-function analyze(samples, vh) {
-  const tops = [0, vh, vh * 2, vh * 3];
-  let reversals = 0;
-  let stalls = 0;
-  let lastDir = 0;
-  let stillSince = 0;
-  const stops = [];
-  for (let i = 1; i < samples.length; i++) {
-    const d = samples[i][1] - samples[i - 1][1];
-    const dir = d > 1 ? 1 : d < -1 ? -1 : 0;
-    if (dir !== 0 && lastDir !== 0 && dir !== lastDir) reversals++;
-    if (dir !== 0) lastDir = dir;
-    if (dir === 0) {
-      if (stillSince === 0) stillSince = samples[i][0];
-      if (samples[i][0] - stillSince > 150) {
-        stalls++;
-        stillSince = -1e9; // contar una vez por parón
-        const y = samples[i][1];
-        const near = tops.findIndex((t) => Math.abs(y - t) < vh * 0.15);
-        if (near >= 0) stops.push(near);
-      }
-    } else {
-      stillSince = 0;
-    }
-  }
-  const settleMs = samples.length ? samples[samples.length - 1][0] : 0;
-  return {
-    finalY: samples.length ? samples[samples.length - 1][1] : -1,
-    settleWindowMs: settleMs,
-    reversals,
-    stalls,
-    stopsNearSections: stops,
-  };
-}
-
-test('scroll-up — un flick fuerte desde abajo hasta el hero', async ({
-  page,
-}) => {
+test('snap — una rueda abajo centra la siguiente sección', async ({ page }) => {
   await page.goto('/');
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   const vh = await page.evaluate(() => window.innerHeight);
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(2500); // asentamiento inicial con snap
-  const fromY = await page.evaluate(() => window.scrollY);
-
-  const traceP = startTrace(page, 5000);
-  await page.waitForTimeout(100);
-  // Flick proporcional al viewport (3×vh): el fijo -2500px no escala a
-  // viewports altos (tablet 1024: aterrizaba en 572 vs umbral 512).
-  await page.mouse.wheel(0, -Math.round(vh * 3)); // flick único hacia arriba
-  const samples = await traceP;
-  const r = analyze(samples, vh);
-  console.log(JSON.stringify({ fromY, vh, ...r }));
-  // Debe terminar arriba (o muy cerca) sin quedarse colgado a mitad.
-  expect(r.finalY).toBeLessThan(vh * 0.5);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.mouse.wheel(0, 300);
+  // Centro de la sección 1 = exactamente 1×vh.
+  await settleBand(page, vh);
 });
 
-test('scroll-up — ruedas pequeñas continuas (progreso neto)', async ({
-  page,
-}) => {
+test('snap — arriba vuelve y la ráfaga en lock no salta dos', async ({ page }) => {
   await page.goto('/');
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   const vh = await page.evaluate(() => window.innerHeight);
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(2500);
-
-  const traceP = startTrace(page, 4000);
+  await page.mouse.wheel(0, 300);
+  await settleBand(page, vh);
+  // Dos ruedas seguidas: la segunda cae en el lock → un solo salto.
+  await page.mouse.wheel(0, 300);
   await page.waitForTimeout(100);
-  for (let i = 0; i < 10; i++) {
-    await page.mouse.wheel(0, -140);
-    await page.waitForTimeout(60);
-  }
-  const samples = await traceP;
-  const r = analyze(samples, vh);
-  console.log(JSON.stringify({ vh, ...r }));
-  // Con input neto -1400px debe haber progreso real (>50% del input):
-  // si el snap devuelve cada micro-rueda, el avance neto colapsa (era 0).
-  const startY = samples.length ? samples[0][1] : vh * 3;
-  expect(startY - r.finalY).toBeGreaterThan(700);
+  await page.mouse.wheel(0, 300);
+  await settleBand(page, vh * 2);
+  // Tras asentarse, otra rueda sí avanza (a contacto = 3×vh).
+  await page.mouse.wheel(0, 300);
+  await settleBand(page, vh * 3);
+  // Y hacia arriba vuelve una por una.
+  await page.mouse.wheel(0, -300);
+  await settleBand(page, vh * 2);
 });
 
 test('scroll — eventos, listeners y longtasks durante scroll sostenido', async ({
