@@ -1,12 +1,13 @@
 import "./section.css";
 import localFont from "next/font/local";
 import { outfit } from "../../../../fonts";
+import ProjectCarousel from "./components/project-carousel/ProjectCarousel";
 
 const cinzel = localFont({
   src: "../../../../fonts/Cinzel-VariableFont_wght.ttf",
 });
 
-export default function Section({ sectionType = "plain", title, subtitle, content }) {
+export default function Section({ sectionType = "plain", title, subtitle, content, carouselItems = null }) {
   if (!title && !subtitle && !content) return null;
   const isHero = sectionType === "hero";
   return (
@@ -19,6 +20,7 @@ export default function Section({ sectionType = "plain", title, subtitle, conten
         <p className={outfit.className}>
           {content}
         </p>
+        {carouselItems && <ProjectCarousel items={carouselItems} />}
       </div>
     </section>
   );
