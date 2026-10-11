@@ -1,0 +1,17 @@
+/* Blob (A2.2): lienzo a tamaño de SECCIÓN (inset 0 del section relative).
+   Antes era pequeño y recortaba la sombra con una línea recta. Sin gestos,
+   detrás del contenido (z 0 vs .section-content z 1). */
+
+.project-blob {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.carousel-view {
+    position: relative;
+    z-index: 1;
+}

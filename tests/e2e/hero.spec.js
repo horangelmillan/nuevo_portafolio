@@ -11,6 +11,10 @@ async function gotoClean(page, url) {
   });
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
   const resp = await page.goto(url);
+  // El preloader (A3) bloquea puntero al inicio: esperar su salida.
+  await page.waitForFunction(() => document.body.dataset.booted === '1', null, {
+    timeout: 15000,
+  });
   return { resp, errors };
 }
 
@@ -23,7 +27,7 @@ test('1 — home carga: HTTP, H1 y hero visibles', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('2 — canvas global fijo: existe, dimensionado, no intercepta', async ({
+test('2 — canvas global anclado al hero: existe, dimensionado, no intercepta', async ({
   page,
 }) => {
   const { errors } = await gotoClean(page, '/');
@@ -36,7 +40,7 @@ test('2 — canvas global fijo: existe, dimensionado, no intercepta', async ({
   expect(await canvas.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe(
     'none'
   );
-  // Fijo a viewport detrás del contenido.
+  // Anclado al hero (absolute que viaja con el documento), detrás del contenido.
   expect(
     await canvas.evaluate((el) => getComputedStyle(el).position)
   ).toBe('absolute');
@@ -45,8 +49,18 @@ test('2 — canvas global fijo: existe, dimensionado, no intercepta', async ({
       const g = document.querySelector('.global-background');
       return g ? getComputedStyle(g).position : null;
     })
-  ).toBe('fixed');
+  ).toBe('absolute');
+  // Viaja con el hero al hacer scroll (no queda clavado al viewport).
+  const heroBox = await page.locator('section.hero').boundingBox();
+  expect(Math.abs(box.y - heroBox.y)).toBeLessThan(2);
+  expect(Math.abs(box.height - heroBox.height)).toBeLessThan(2);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(800);
+  const boxAfter = await canvas.boundingBox();
+  expect(boxAfter.y).toBeLessThan(0);
   // El canvas no intercepta: sobre el centro del H1 responde el H1.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(500);
   const h1 = page.locator('section.hero h1');
   const hb = await h1.boundingBox();
   const hit = await page.evaluate(
@@ -69,7 +83,7 @@ test('3 — texto real como HTML, no dibujado en canvas', async ({ page }) => {
   expect(desc.length).toBeGreaterThan(20);
   // Un único canvas global; ningún canvas dentro de secciones.
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
   expect(await hero.locator('canvas h1, canvas p').count()).toBe(0);
   expect(errors).toEqual([]);
 });
@@ -117,7 +131,7 @@ test('6 — solo la primera sección es hero; canvas único global', async ({ pa
   const { errors } = await gotoClean(page, '/');
   expect(await page.locator('section.section').count()).toBe(4);
   expect(await page.locator('section.hero').count()).toBe(1);
-  expect(await page.locator('section.section canvas').count()).toBe(0);
+  expect(await page.locator('section.section canvas:not(.project-blob)').count()).toBe(0);
   expect(await page.locator('.global-background canvas.hero-canvas').count()).toBe(1);
   expect(errors).toEqual([]);
 });

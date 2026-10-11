@@ -1,0 +1,60 @@
+/* Preloader A3: velo sobre todo (nav incluida) que se desmonta al terminar.
+   display:none real vía desmontaje → no intercepta hit-testing posterior. */
+
+.preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: #e9e0cf;
+    transition: opacity 0.3s ease-out;
+}
+
+.preloader.done {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.preloader-name {
+    color: #000000;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    margin: 0;
+}
+
+.preloader-pct {
+    color: #cf4409;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.preloader-bar {
+    width: min(320px, 60vw);
+    height: 2px;
+    background: rgba(12, 12, 19, 0.15);
+    overflow: hidden;
+}
+
+.preloader-bar > span {
+    display: block;
+    height: 100%;
+    background: #cf4409;
+    transform: scaleX(0);
+    transform-origin: left center;
+}
+
+.preloader-legend {
+    color: #525252;
+    font-size: 1rem;
+    margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .preloader {
+        transition: none;
+    }
+}

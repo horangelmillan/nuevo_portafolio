@@ -17,6 +17,13 @@ const Link = () => {
     useCrossOutLink([ref1, ref2, ref3, ref4]);
     useTogleBurguerMenu(refLinks);
 
+    // ABOUT abre el overlay (A3) en vez de navegar: la sección sigue
+    // accesible por scroll y desde el botón "Ver la sección" del panel.
+    // El highlight por scroll no cambia (sigue por activeSection).
+    const openAbout = () => {
+        useStore.getState().setIsBurguerMenuOpen(false);
+        useStore.getState().setIsAboutOpen(true);
+    };
     // Scroll suave nativo centrado en la sección i (0=hero..3=contacto):
     // el punto medio de la sección queda en el punto medio del viewport.
     // Con reduced-motion el salto es instantáneo (accesibilidad). Cierra el
@@ -34,7 +41,7 @@ const Link = () => {
     return (
         <ul className={`${outfitFont.className} Links`} ref={refLinks}>
             <li><button ref={ref1} type="button" data-link="/" onClick={() => scrollToSection(0)} ><span>HOME</span><div></div></button></li>
-            <li><button ref={ref2} type="button" data-link="/me" onClick={() => scrollToSection(1)} ><span>ABOUT</span><div></div></button></li>
+            <li><button ref={ref2} type="button" data-link="/me" onClick={openAbout} aria-haspopup="dialog"><span>ABOUT</span><div></div></button></li>
             <li><button ref={ref3} type="button" data-link="/projects" onClick={() => scrollToSection(2)} ><span>WORK</span><div></div></button></li>
             <li><button ref={ref4} type="button" data-link="/contact" onClick={() => scrollToSection(3)} ><span>CONTACT</span><div></div></button></li>
         </ul>

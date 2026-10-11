@@ -1,8 +1,14 @@
-/* Fondo vivo global: capa fija a viewport (fondo → canvas → halo),
+/* Fondo vivo global: capa anclada al hero (fondo → canvas → halo),
    secciones transparentes por encima. Fase hero idéntica a v7. */
 .global-background {
-  position: fixed;
-  inset: 0;
+  /* Absolute (NO fixed): se desplaza con el documento junto al hero en vez
+     de quedar clavado al viewport. top:0 + 100vh coincide siempre con la
+     primera sección (Nav/Footer son fixed, Body va en flujo detrás). */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
   z-index: 0;
   pointer-events: none;
   /* Placeholder pre-pintado (mismo tono base del modo claro). */
@@ -16,7 +22,7 @@
      ir sincronizados; techo 3em = desktop validado). */
   margin: 0 calc(clamp(1rem, 4vw, 3em) * -1);
   padding-inline: clamp(1rem, 4vw, 3em);
-  /* Transparente: el fondo vivo fijo se ve a través. */
+  /* Transparente: el fondo vivo anclado se ve a través. */
   background: transparent;
 }
 
@@ -30,15 +36,23 @@
   pointer-events: none;
 }
 
-/* El contenido sube por encima del fondo fijo (nav sigue en 9999). */
+/* El contenido sube por encima del fondo anclado (nav sigue en 9999). */
 .body {
   position: relative;
   z-index: 1;
   background: transparent;
 }
 
-.section {
-  background: transparent;
+.section:not(.hero) {
+  /* Opacas y full-bleed: tapan el canvas anclado al bajar en TODO el ancho
+     (sin full-bleed el canvas se filtraría por los gutters laterales).
+     Caja de contenido idéntica (el padding compensa el margin) → texto y
+     layout intactos. Tono plano idéntico al final del velo del cierre
+     inferior → transición sin línea. El hero sigue transparente (regla
+     .hero) para mostrar el canvas. */
+  margin: 0 calc(clamp(1rem, 4vw, 3em) * -1);
+  padding-inline: clamp(1rem, 4vw, 3em);
+  background: #e9e0cf;
 }
 
 .hero-halo {
@@ -65,11 +79,11 @@
 
 .hero h2 {
   text-shadow:
-    0 1px 2px rgba(20, 10, 40, 0.4),
-    0 0 16px rgba(255, 248, 238, 0.55);
+    0 1px 2px rgba(0, 0, 1, 0.47),
+    0 0 16px rgb(250, 249, 249);
 }
 
 .hero p {
-  color: #404040;
-  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.5);
+  color: #000000;
+  text-shadow: 0 1px 10px rgb(255, 255, 255);
 }

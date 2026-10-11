@@ -1,7 +1,7 @@
 "use client";
 
 /*
- * Fondo vivo global (base §5): un único canvas fijo a viewport detrás de
+ * Fondo vivo global (base §5): un único canvas anclado al hero detrás de
  * todo, con el mismo motor/píxeles de la fase hero (v7, semilla 12).
  * Andamiaje: faseActiva + progreso por scroll, morph de paleta (no-op en
  * base: las 4 fases usan cálida), safe zones por sección (la generación usa
@@ -36,7 +36,7 @@ export default function HeroBackground() {
     zone: null,
     zones: [],
     offsets: [],
-    phase: { index: 0, id: PHASES[0].id, progress: 0 },
+    phase: { index: 0, id: PHASES[0].id, progress: 0, blend: 0 },
     size: { w: 0, h: 0, dpr: 1 },
     params: { ...HERO_BG },
   });
@@ -110,6 +110,7 @@ export default function HeroBackground() {
       const sim = simRef.current;
       const vh = window.innerHeight;
       const phase = getPhaseForScroll(window.scrollY, sim.offsets, vh);
+      if (!sim.phase || sim.phase.id !== phase.id) sim.staticRendered = false;
       sim.phase = phase;
       publishPhase(phase);
     };
@@ -122,7 +123,7 @@ export default function HeroBackground() {
     };
 
     const resize = () => {
-      // Fijo a viewport: clientWidth excluye scrollbar e iguala el ancho
+      // Anclado al hero (absolute top:0/100vh): clientWidth excluye scrollbar e iguala el ancho
       // full-bleed previo del hero (body 3em − hero −3em); alto 100vh.
       const w = Math.max(
         1,
@@ -140,6 +141,13 @@ export default function HeroBackground() {
       }
       c2.setTransform(dpr, 0, 0, dpr, 0, 0);
       simRef.current.size = { w, h, dpr };
+      // Velo del cierre inferior (una vez por resize, no por frame):
+      // transparente hasta el 78% y tono plano de secciones al 99%.
+      // Debe coincidir con el fondo de `.section:not(.hero)`.
+      const veil = c2.createLinearGradient(0, h * 0.78, 0, h * 0.99);
+      veil.addColorStop(0, "rgba(233,224,207,0)");
+      veil.addColorStop(1, "rgba(233,224,207,1)");
+      simRef.current.veil = veil;
       simRef.current.layers = renderStaticLayers(w, h, dpr, p0.bgMode, {
         color: p0.shadowColor,
         fuerza: p0.shadowFuerza,
@@ -241,6 +249,7 @@ export default function HeroBackground() {
       }
       if (isStatic()) {
         if (!sim.staticRendered) {
+          // Pose congelada: re-render al cambiar de fase.
           drawFrame(ctx, sim, 0, 0.6);
           sim.staticRendered = true;
         }
@@ -250,7 +259,9 @@ export default function HeroBackground() {
       sim.staticRendered = false;
       const t = now / 1000;
       const sp = sim.params.speed;
-      // Conducta hero (única en la base): deriva lineal con wrap.
+      // La deriva hero se integra SIEMPRE con dt real (trayectorias idénticas).
+      // La animación no depende del scroll: el fundido inferior es espacial.
+      // La física se integra SIEMPRE con dt real (trayectorias idénticas).
       for (const p of sim.pieces) {
         p.x += p.vx * sp * dt;
         p.y += p.vy * sp * dt;
@@ -273,7 +284,7 @@ export default function HeroBackground() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fallback sin Canvas: solo halo sobre el fondo del wrapper fijo.
+  // Fallback sin Canvas: solo halo sobre el fondo del wrapper anclado.
   return (
     <div ref={wrapRef} aria-hidden="true" className="global-background">
       {supported && (

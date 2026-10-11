@@ -15,7 +15,9 @@ const useStore = create((set) => ({
     activeSection: 0,
     setActiveSection: (value) => set({ activeSection: value }),
     isFinalScroll: false,
-    setIsFinalScroll: (value) => set({ isFinalScroll: value})
+    setIsFinalScroll: (value) => set({ isFinalScroll: value}),
+    isAboutOpen: false,
+    setIsAboutOpen: (value) => set({ isAboutOpen: value })
 }));
 
 export default useStore;

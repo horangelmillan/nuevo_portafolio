@@ -1,0 +1,133 @@
+/* Carrusel de proyectos (A1). Controles laterales compactos: la referencia
+   usa zonas de 145px a pantalla completa; aquí el carrusel convive con el
+   scroll vertical, así que son botones de 64px (no secuestran gestos). */
+
+.carousel {
+    position: relative;
+    margin-top: 1.5rem;
+    outline-offset: 4px;
+}
+
+.carousel-view {
+    overflow: hidden;
+    cursor: grab;
+    touch-action: pan-y;
+    border-radius: 12px;
+    /* Fade en los bordes (feedback 2026-10-11): las tarjetas se desvanecen
+       al salir en vez de cortarse en duro. La activa siempre centra lejos
+       de los bordes, así que nunca se atenúa ella. */
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 clamp(24px, 6vw, 64px), #000 calc(100% - clamp(24px, 6vw, 64px)), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 clamp(24px, 6vw, 64px), #000 calc(100% - clamp(24px, 6vw, 64px)), transparent 100%);
+}
+
+.carousel-view.grabbing {
+    cursor: grabbing;
+}
+
+.carousel-track {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    /* Padding lateral = mitad del viewport menos media tarjeta: la primera
+       y la última pueden centrarse (patrón clásico de carrusel). La mitad
+       de la tarjeta replica su width (min(320px,78vw) / 2).
+       OJO quirks verificados: en contenedor con overflow el padding FINAL
+       colapsa (no suma a scrollWidth), y el width-% de un ::after resolvía
+       contra la content-box ya encogida (~280px en vez de 512) → el
+       espaciador final es un elemento REAL (li.carousel-spacer, ancho
+       fijado en measure()). */
+    padding: 2.5rem 0 2.5rem calc(50% - min(160px, 39vw));
+    will-change: transform;
+}
+
+/* Espaciador final REAL (elemento, no ::after): el padding-% funciona a la
+   izquierda (resuelve contra el viewport) pero el width-% del ::after
+   resolvía contra la content-box ya encogida (~280px en vez de 512) y la
+   última no centraba. El ancho lo fija measure() en JS: viewW/2 - cardW/2. */
+.carousel-spacer {
+    flex: 0 0 auto;
+    list-style: none;
+}
+
+.carousel-card {
+    flex: 0 0 auto;
+    width: min(320px, 78vw);
+    background: rgba(250, 245, 236, 0.92);
+    border: 1px solid rgba(12, 12, 19, 0.12);
+    border-radius: 12px;
+    padding: 1.25rem 1.25rem 1.5rem;
+    box-shadow: 0 8px 24px rgba(12, 12, 19, 0.12);
+    transform-origin: center center;
+    user-select: none;
+}
+
+.carousel-card h3 {
+    color: #000000;
+    font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+    margin: 0.75rem 0 0.5rem;
+}
+
+.carousel-context {
+    color: #525252;
+    font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+    margin: 0 0 0.5rem;
+}
+
+.carousel-status {
+    color: #cf4409;
+    font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+    margin: 0;
+}
+
+.carousel-accent {
+    display: block;
+    height: 6px;
+    width: 3rem;
+    border-radius: 3px;
+    background: var(--accent, #cf4409);
+}
+
+.carousel-ctrl {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 64px;
+    border: 0;
+    background: transparent;
+    color: #000000;
+    font-size: 2.5rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.35;
+    z-index: 2;
+}
+
+.carousel-ctrl:hover {
+    opacity: 0.8;
+}
+
+.carousel-ctrl:disabled {
+    opacity: 0.12;
+    cursor: default;
+}
+
+.carousel-ctrl:focus-visible {
+    outline: 2px solid #cf4409;
+    outline-offset: -2px;
+    opacity: 0.9;
+}
+
+.carousel-ctrl.left {
+    left: -0.5rem;
+}
+
+.carousel-ctrl.right {
+    right: -0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .carousel-track {
+        will-change: auto;
+    }
+}
