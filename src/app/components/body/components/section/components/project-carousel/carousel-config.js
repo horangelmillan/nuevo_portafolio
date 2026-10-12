@@ -24,24 +24,35 @@ export const CAROUSEL_ITEMS = [
     context: "Next.js 15 · React 19 · Canvas propio",
     status: "Este sitio — fondo generativo + carrusel",
     color: "#cf4409",
+    slug: "portfolio",
   },
   {
     title: "SAP BTP",
     context: "Integraciones cloud empresariales",
     status: "Consultoría — casos por publicar",
     color: "#a4133c",
+    slug: "sap-btp",
   },
   {
     title: "Apps JS",
     context: "Empresarial · frontend moderno",
     status: "Mantenibles, con E2E",
     color: "#e63946",
+    slug: "apps-js",
   },
   {
     title: "Próximo caso",
     context: "Demo + repo + métricas",
     status: "En preparación",
     color: "#b03a0e",
+    slug: "proximo",
+  },
+  {
+    title: "MundoCloud",
+    context: "Sitio corporativo · WordPress",
+    status: "En línea desde 2026",
+    color: "#3b4fe4",
+    slug: "mundocloud",
   },
 ];
 
@@ -81,6 +92,7 @@ export const BLOB_SHAPES = [
   { amp1: 0.06, amp2: 0.11, sx: 0.94, sy: 1.1 }, // pera vertical
   { amp1: 0.13, amp2: 0.03, sx: 1.12, sy: 0.92 }, // apaisada
   { amp1: 0.09, amp2: 0.08, sx: 1.02, sy: 1.04 }, // casi redonda viva
+  { amp1: 0.11, amp2: 0.09, sx: 0.96, sy: 1.06 }, // alta con hombros
 ];
 
 export const BLOB = {

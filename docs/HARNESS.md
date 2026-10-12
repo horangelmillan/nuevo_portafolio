@@ -22,7 +22,7 @@ Plan mínimo: objetivo, archivos afectados, cambios, dependencias, riesgos, prue
 
 ## 5. Implementación
 
-Seguir el plan y las convenciones; cambio lo más pequeño posible; reutilizar; sin dependencias no pedidas. Fuera de alcance: si es `BLOCKER`, resolverlo; si no, registrarlo como `FOLLOW-UP` y continuar.
+Seguir el plan y las convenciones; cambio lo más pequeño posible; reutilizar; sin dependencias no pedidas. **0 ATAJOS** (gate 4 de `AGENTS.md`, inviolable): un solo objeto vivo por elemento animado, transiciones in-place. Fuera de alcance: si es `BLOCKER`, resolverlo; si no, registrarlo como `FOLLOW-UP` y continuar.
 
 ## 6. Hallazgos (`docs/ESTADO.md`)
 

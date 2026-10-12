@@ -5,6 +5,7 @@ import Body from "./components/body/body";
 import Footer from "./components/footer/footer";
 import Preloader from "./components/preloader/Preloader";
 import AboutOverlay from "./components/about/AboutOverlay";
+import CaseOverlay from "./components/case/CaseOverlay";
 import HeroBackground from "./components/body/components/section/components/hero-background/HeroBackground";
 import useScrollData from "./hooks/useScrollData";
 import useSectionSnap from "./hooks/useSectionSnap";
@@ -21,6 +22,7 @@ export default function Home() {
       <Body></Body>
       <Footer></Footer>
       <AboutOverlay />
+      <CaseOverlay />
     </main>
   );
 }

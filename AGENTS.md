@@ -35,6 +35,7 @@ Antes de invocar un subagente, responder: "¿qué incertidumbre o trabajo concre
 1. **Implementar** solo con autorización explícita del usuario tras explicar el plan en lenguaje sencillo (qué, por qué, archivos, riesgos, cómo se probará).
 2. **Commit/PR** solo tras validación del usuario. PR hacia `main` con pruebas realizadas. Merge solo con CI verde (si existe).
 3. Un subagente **nunca** cambia el objetivo ni implementa por su cuenta: informa, el principal decide.
+4. **0 ATAJOS (regla estricta, orden directa del usuario):** un solo objeto vivo por elemento animado. Prohibido duplicar canvas, loops, paths o capas para simular continuidad (fundidos cruzados, clones, capas espejo, "nuevo blob en otra página"). Toda transición se ejecuta morfando/animando IN-PLACE el mismo objeto — verificado en la referencia (un único `bubble`, `createPath` borra el polígono anterior, morph por segmentos del mismo polígono). Si algo no se puede hacer con el objeto único, se rediseña — no se duplica. Violarla = no-listo automático.
 
 ## Agentes (`.opencode/agents/`, mecanismo oficial OpenCode)
 

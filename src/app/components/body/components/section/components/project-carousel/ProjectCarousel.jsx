@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import useStore from "@/app/store/store";
 import { CAROUSEL_ITEMS, PHYS } from "./carousel-config";
 import {
   clamp,
@@ -32,10 +33,12 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
   const prevRef = useRef(null);
   const nextRef = useRef(null);
   const goRef = useRef(() => {});
+  const selectRef = useRef(() => {});
   const simRef = useRef({
     x: 0,
     v: 0,
     dragging: false,
+    moved: 0,
     lastX: 0,
     lastT: 0,
     raf: 0,
@@ -82,15 +85,16 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       track.dataset.offset = String(Math.round(sim.x));
       track.dataset.settled = !sim.tween && !sim.dragging && sim.v === 0 ? "1" : "0";
       const els = cards();
-      for (let i = 0; i < els.length; i++) {
-        const prox = proximity(sim.centers[i] + sim.x, viewCenter, sim.viewW);
-        els[i].style.transform = `scale(${cardScale(prox, PHYS.minScale, PHYS.maxScale).toFixed(3)})`;
-        els[i].style.opacity = String(cardOpacity(prox, PHYS.minOpacity).toFixed(3));
-      }
       const idx = nearestIndex(sim.centers, sim.x, viewCenter);
       if (idx !== sim.active) {
         sim.active = idx;
         root.dataset.activeIndex = String(idx);
+      }
+      for (let i = 0; i < els.length; i++) {
+        const prox = proximity(sim.centers[i] + sim.x, viewCenter, sim.viewW);
+        els[i].style.transform = `scale(${cardScale(prox, PHYS.minScale, PHYS.maxScale).toFixed(3)})`;
+        els[i].style.opacity = String(cardOpacity(prox, PHYS.minOpacity).toFixed(3));
+        els[i].dataset.active = i === sim.active ? "true" : "false";
       }
       if (prevRef.current) prevRef.current.disabled = idx <= 0;
       if (nextRef.current) nextRef.current.disabled = idx >= els.length - 1;
@@ -151,11 +155,23 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       ensureLoop();
     };
     goRef.current = (step) => goTo(sim.active + step);
+    // Click/teclado en activa abre el caso EN EL MISMO SITIO (overlay, sin
+    // redirección: decisión usuario); en otra la centra.
+    selectRef.current = (i) => {
+      const item = items[i];
+      if (i === sim.active) useStore.getState().setCaseView({ slug: item.slug, idx: i, mode: "expand" });
+      else goTo(i);
+    };
 
     const onDown = (e) => {
       sim.dragging = true;
       sim.tween = null;
       sim.v = 0;
+      sim.moved = 0;
+      // Tarjeta bajo el press (solo un tap press+release en la MISMA
+      // tarjeta abre/centra; si se suelta en otra parte es snap).
+      const downEl = e.target && e.target.closest ? e.target.closest(".carousel-card[data-index]") : null;
+      sim.downCard = downEl ? downEl.dataset.index : null;
       sim.lastX = e.clientX;
       sim.lastT = performance.now();
       try {
@@ -174,6 +190,7 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       // Velocidad suavizada en px/frame (@60fps), como la deriva del hero.
       const inst = (dx / dt) * 16.667;
       sim.v = sim.v * 0.7 + inst * 0.3;
+      sim.moved += Math.abs(dx);
       sim.lastX = e.clientX;
       sim.lastT = now;
       // Bordes con rubber-band: ceden con resistencia en vez de clavarse.
@@ -188,10 +205,35 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       publish();
     };
 
-    const onUp = () => {
+    const onUp = (e) => {
       if (!sim.dragging) return;
       sim.dragging = false;
       view.classList.remove("grabbing");
+      // Tap (sin arrastre): el onClick del navegador NO sirve aquí porque la
+      // captura reorienta el up a la vista; se resuelve la tarjeta por
+      // geometría. Misma regla que el teclado: activa abre, otra centra
+      // (vía el snap de abajo).
+      if (sim.moved <= 8 && e && typeof e.clientX === "number") {
+        const under =
+          typeof document.elementFromPoint === "function"
+            ? document.elementFromPoint(e.clientX, e.clientY)
+            : null;
+        const card = under && under.closest ? under.closest(".carousel-card[data-index]") : null;
+        if (card && card.dataset.index === sim.downCard) {
+          const i = Number(card.dataset.index);
+          const item = items[i];
+          sim.v = 0;
+          sim.tween = null;
+          if (i === sim.active) {
+            if (item) useStore.getState().setCaseView({ slug: item.slug, idx: i, mode: "expand" });
+          } else {
+            // Tap en inactiva: tween directo a centrarla (el snap de abajo
+            // centraría la más cercana, no la pulsada).
+            goTo(i);
+          }
+          return;
+        }
+      }
       // Snap al centro: la tarjeta más cercana (o la siguiente en la
       // dirección del flick) se centra sola con tween. Sin inercia libre.
       const els = cards();
@@ -297,6 +339,15 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
               className="carousel-card"
               data-index={i}
               style={{ "--accent": it.color }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Abrir caso: ${it.title}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectRef.current(i);
+                }
+              }}
             >
               <span className="carousel-accent" aria-hidden="true" />
               <h3>{it.title}</h3>

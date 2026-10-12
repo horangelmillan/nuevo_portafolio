@@ -23,6 +23,14 @@ export function lerp3(a, b, t) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
+// Circ.easeInOut de la evidencia (morph de 1s del expend): fórmula cerrada,
+// sin GSAP. Implementación original de la curva estándar.
+export function easeCircInOut(t) {
+  const x = Math.max(0, Math.min(1, t));
+  if (x < 0.5) return (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) / 2;
+  return (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) / 2;
+}
+
 // Radio polar deformado SIN rotación (feedback 2026-10-11: el blob "giraba"
 // porque las fases viajaban con t): las fases son FIJAS globales; solo las
 // amplitudes morfean por proyecto y la respiración escala el conjunto.
