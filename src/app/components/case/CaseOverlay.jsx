@@ -56,19 +56,28 @@ export default function CaseOverlay() {
     const bd = document.body;
     if (bd.dataset.caseScroll) return;
     const y = window.scrollY;
-    bd.dataset.caseScroll = `${y}|${bd.style.position || ""}|${bd.style.top || ""}|${bd.style.width || ""}`;
+    // Tirón lateral: si hay scrollbar CLÁSICO ocupando espacio, al fijar el
+    // body desaparece y el viewport se ensancha (medido 10px: el contenido
+    // full-bleed + canvas se estiran a la derecha al abrir y vuelven al
+    // cerrar). Se compensa con padding-right exacto (body es border-box
+    // global: la caja de contenido vuelve a su ancho y nada se mueve). En
+    // overlay (móvil/Mac: sbw 0) es no-op. Se mide ANTES de fijar.
+    const sbw = window.innerWidth - document.documentElement.clientWidth;
+    bd.dataset.caseScroll = `${y}|${bd.style.position || ""}|${bd.style.top || ""}|${bd.style.width || ""}|${bd.style.paddingRight || ""}`;
     bd.style.position = "fixed";
     bd.style.top = `-${y}px`;
     bd.style.width = "100%";
+    if (sbw > 0) bd.style.paddingRight = `${sbw}px`;
   };
   const unlockScroll = () => {
     const bd = document.body;
     const saved = bd.dataset.caseScroll;
     if (saved === undefined) return;
-    const [y, position, top, width] = saved.split("|");
+    const [y, position, top, width, paddingRight] = saved.split("|");
     bd.style.position = position;
     bd.style.top = top;
     bd.style.width = width;
+    bd.style.paddingRight = paddingRight;
     delete bd.dataset.caseScroll;
     // instant: la página usa scroll-behavior:smooth y el restore debe ser
     // un salto exacto, no una animación que deje scrollY a mitad de vuelo.

@@ -144,7 +144,8 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     // cerrar, el alfa sube RÁPIDO (min(1,tt*4)): el blob se materializa
     // casi a tamaño completo y de ahí encoje visible — con (1-k) tardaba
     // ~500ms invisible y aparecía grande de golpe, leyéndose como
-    // "re-expansión".
+    // "re-expansión". La forma se pinta CON sombra (igual que en reposo:
+    // mismo color y blur): sin ella el morph parpadeaba al arrancar.
     const drawMorph = (k, alpha) => {
       const { w, h } = sim;
       const cx = sim.p0.x + (sim.p1.x - sim.p0.x) * k;
@@ -161,16 +162,18 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       if (k <= 0 || alpha <= 0) return;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      blobPath(cx, cy, R, shape, 1);
-      ctx.clip();
       const g = ctx.createLinearGradient(0, cy - R, 0, cy + R);
       const light = rgbCss(shadeRgb(color, 52));
+      const base = rgbCss(color);
       const dark = rgbCss(shadeRgb(color, -40));
       g.addColorStop(0, light);
-      g.addColorStop(0.55, rgbCss(color));
+      g.addColorStop(0.55, base);
       g.addColorStop(1, dark);
+      ctx.shadowColor = base;
+      ctx.shadowBlur = BLOB.shadowBlur;
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
+      blobPath(cx, cy, R, shape, 1);
+      ctx.fill();
       ctx.restore();
     };
 

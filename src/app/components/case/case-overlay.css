@@ -16,10 +16,14 @@
     pointer-events: none;
 }
 
-/* Flujo único: la nav fija (z 9999) queda por encima del detalle absoluto;
-   antes la bloqueaba el overlay z15000. Se conserva bloqueada (sin tocar
-   z-index ni capas: lo invisible no recibe puntero). */
-body:has(section.case-open) .Navbar {
+/* Flujo único: nav (fija z 9999) y footer (fijo z 10) viven FUERA de la
+   sección y pintarían sobre la hoja; antes los tapaba el overlay z15000.
+   Se conservan apagados durante el caso (sin tocar z-index ni capas: la
+   regla manda sobre sus fades propios por especificidad y se retira sola
+   al cerrar, devolviéndoles su estado). Misma transición que ya tienen. */
+body:has(section.case-open) .Navbar,
+body:has(section.case-open) .Footer {
+    opacity: 0;
     pointer-events: none;
 }
 

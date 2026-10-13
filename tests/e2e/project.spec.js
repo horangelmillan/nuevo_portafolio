@@ -404,11 +404,12 @@ test('caso R1 — hoja a viewport completo con gutters de sección', async ({ pa
   const gutters = await page.evaluate(() => {
     const sheet = document.querySelector('.case-sheet');
     const body = document.querySelector('.body');
+    const section = document.querySelector('.case-overlay').parentElement;
     const cs = getComputedStyle(sheet);
     const cb = getComputedStyle(body);
     return {
       sheetW: sheet.getBoundingClientRect().width,
-      vw: window.innerWidth,
+      sectionW: section.getBoundingClientRect().width,
       padL: cs.paddingLeft,
       padR: cs.paddingRight,
       bodyL: cb.marginLeft,
@@ -416,9 +417,11 @@ test('caso R1 — hoja a viewport completo con gutters de sección', async ({ pa
       maxW: cs.maxWidth,
     };
   });
-  // Sin max-width: la hoja ocupa todo el ancho del viewport…
+  // Sin max-width: la hoja ocupa todo el ancho de SU SECCIÓN (con
+  // `scrollbar-gutter: stable` la sección es ~10px más angosta que el
+  // viewport: el gutter reservado; por eso se mide contra la sección)…
   expect(gutters.maxW).toBe('none');
-  expect(Math.abs(gutters.sheetW - gutters.vw)).toBeLessThan(2);
+  expect(Math.abs(gutters.sheetW - gutters.sectionW)).toBeLessThan(2);
   // …con los mismos gutters laterales que las secciones.
   expect(gutters.padL).toBe(gutters.bodyL);
   expect(gutters.padR).toBe(gutters.bodyR);
@@ -551,6 +554,246 @@ test('caso R3 — hoja baja por bloques (snap JS) sin atasco y sin barra', async
   cur = await settleTop();
   expect(cur).toBeLessThan(4);
   expect(await page.evaluate(() => window.scrollY)).toBe(y0);
+  expect(errors).toEqual([]);
+});
+
+// Nav y footer viven FUERA de la sección (fijos) y pintarían sobre la hoja:
+// durante el caso se apagan (la regla :has manda sobre sus fades propios)
+// y al cerrar la regla se retira y vuelven a su estado.
+test('caso chrome — nav y footer apagados en el detalle, vivos al volver', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  await page.locator('.carousel-card[data-index="0"]').click();
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  const chrome = () =>
+    page.evaluate(() => {
+      const cs = (sel, prop) => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el)[prop] : null;
+      };
+      return {
+        navOp: cs('.Navbar', 'opacity'),
+        navPe: cs('.Navbar', 'pointerEvents'),
+        footOp: cs('.Footer', 'opacity'),
+        footPe: cs('.Footer', 'pointerEvents'),
+      };
+    });
+  const shut = await chrome();
+  expect(shut.navOp).toBe('0');
+  expect(shut.navPe).toBe('none');
+  expect(shut.footOp).toBe('0');
+  expect(shut.footPe).toBe('none');
+  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
+  // La retirada es con transición (0.7s, pointer-events discreto a mitad):
+  // se espera a que el puntero reviva en ambos. La opacidad la vuelven a
+  // mandar sus clases de fade (no se fija valor: depende del scroll).
+  await page.waitForFunction(() => {
+    const pe = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? getComputedStyle(el).pointerEvents : null;
+    };
+    return pe('.Navbar') === 'auto' && pe('.Footer') === 'auto';
+  }, null, { timeout: 8000 });
+  expect(await page.evaluate(() => document.querySelector('section.case-open'))).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+// Al congelar la página (body fixed) la barra global desaparece y el
+// viewport se ensancha: el lock compensa con padding-right exacto para que
+// nada se mueva (solo si hay scrollbar clásico; en overlay es no-op).
+test('caso gutter — abrir/cerrar no ensancha ni mueve el contenido', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  const widths = () =>
+    page.evaluate(() => ({
+      section: document.querySelectorAll('section.section')[2].getBoundingClientRect().width,
+      canvas: document.querySelector('.project-blob').clientWidth,
+    }));
+  // Ancho real del scrollbar ANTES de congelar (0 en overlay).
+  const sbw0 = await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
+  const before = await widths();
+  await page.locator('.carousel-card[data-index="0"]').click();
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  // Compensación exacta durante el lock (o vacía en overlay).
+  expect(await page.evaluate(() => document.body.style.paddingRight)).toBe(sbw0 > 0 ? `${sbw0}px` : '');
+  const during = await widths();
+  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
+  // Al volver la compensación se retira con el resto del lock.
+  expect(await page.evaluate(() => document.body.style.paddingRight)).toBe('');
+  const after = await widths();
+  for (const [label, a, b] of [
+    ['sección durante', before.section, during.section],
+    ['sección después', before.section, after.section],
+    ['canvas durante', before.canvas, during.canvas],
+    ['canvas después', before.canvas, after.canvas],
+  ]) {
+    expect(Math.abs(a - b), label).toBeLessThan(1);
+  }
+  expect(errors).toEqual([]);
+});
+
+// La franja que se libera al congelar (desaparece la barra) muestra el
+// fondo RAÍZ: en papel, no blanca. Y el carril es transparente (solo el
+// thumb naranja flota sobre la página).
+test('caso marco — raíz en papel y carril transparente, sin franja blanca', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  // Invariantes CSS (valen con y sin scrollbar clásico).
+  const root = await page.evaluate(() => ({
+    bg: getComputedStyle(document.documentElement).backgroundColor,
+    bodyBg: getComputedStyle(document.body).backgroundColor,
+  }));
+  expect(root.bg).toBe('rgb(233, 224, 207)');
+  // El body no tapa la raíz (su fondo es transparente).
+  expect(root.bodyBg).toBe('rgba(0, 0, 0, 0)');
+  await page.locator('.carousel-card[data-index="0"]').click();
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  // La hoja cubre hasta el borde (es la superficie del detalle) y DETRÁS
+  // solo hay raíz en papel + body transparente: la franja liberada al
+  // congelar compone papel, nunca blanco (el borde se verifica a ojo en
+  // los screenshots del gate).
+  const edge = await page.evaluate(() => {
+    const el = document.elementFromPoint(window.innerWidth - 4, 450);
+    return el ? el.tagName + '.' + el.className : '?';
+  });
+  expect(edge).toMatch(/case-sheet/);
+  expect(errors).toEqual([]);
+});
+
+// Sonda rAF instalada ANTES del gesto: en cada frame barato revisa k y fase;
+// en el PRIMERO dentro de la ventana analiza los píxeles (k y píxeles del
+// mismo instante, sin aliasing del polling). El polling pesado inanicionaba
+// el loop y los saltos en k brincaban la ventana.
+async function catchRamp(page, k0, k1, phase) {
+  return page.evaluate(
+    ([k0, k1, wantPhase]) =>
+      new Promise((resolve) => {
+        const analyze = (cv) => {
+          const r = cv.getBoundingClientRect();
+          const dpr = cv.width / Math.max(1, r.width);
+          const ctx = cv.getContext('2d');
+          const Y0 = Math.round(300 * dpr);
+          const SH = Math.round(300 * dpr);
+          const img = ctx.getImageData(0, Y0, cv.width, SH).data;
+          const W = cv.width;
+          const H = SH;
+          const PAPER = [233, 224, 207];
+          const diff = (i) =>
+            Math.abs(img[i] - PAPER[0]) + Math.abs(img[i + 1] - PAPER[1]) + Math.abs(img[i + 2] - PAPER[2]);
+          const k = Number(cv.dataset.k);
+          let maxA = 0;
+          for (let y = 0; y < H; y += 8) {
+            for (let x = 0; x < W; x += 8) {
+              const i = (y * W + x) * 4;
+              if (diff(i) > 60 && img[i + 3] > maxA) maxA = img[i + 3];
+            }
+          }
+          if (maxA < 100) return { k, ramp: 0 };
+          let y0 = H;
+          let y1 = -1;
+          for (let y = 0; y < H; y += 8) {
+            for (let x = 0; x < W; x += 8) {
+              const i = (y * W + x) * 4;
+              if (diff(i) > 60 && img[i + 3] >= maxA * 0.75) {
+                if (y < y0) y0 = y;
+                if (y > y1) y1 = y;
+              }
+            }
+          }
+          if (y1 < 0) return { k, ramp: 0 };
+          const ramps = [];
+          for (let f = 0; f < 5; f++) {
+            const y = y0 + Math.round((y1 - y0) * (f + 1) / 6);
+            let rowMax = 0;
+            for (let x = 0; x < W; x += 2) {
+              const i = (y * W + x) * 4;
+              if (diff(i) > 60 && img[i + 3] > rowMax) rowMax = img[i + 3];
+            }
+          // Fila válida si el NÚCLEO nace visiblemente dentro (el halo sí
+          // puede tocar el borde: es lo que se mide). Sin rango dinámico
+          // tampoco se separa núcleo de halo.
+          if (rowMax < 100) continue;
+          const coreHi = rowMax * 0.85;
+            let xHalo = -1;
+            let xCore = -1;
+            for (let x = 0; x < W; x += 2) {
+              const i = (y * W + x) * 4;
+              if (diff(i) <= 60) continue;
+              if (xHalo < 0 && img[i + 3] >= 40) xHalo = x;
+              if (img[i + 3] >= coreHi) {
+                xCore = x;
+                break;
+              }
+            }
+            // Núcleo desbordado (nace en el filo): fila no medible.
+            if (xHalo < 0 || xCore < 0 || xCore <= 12 * dpr) continue;
+            ramps.push((xCore - xHalo) / dpr);
+          }
+          if (ramps.length === 0) return { k, ramp: 0 };
+          ramps.sort((a, b) => a - b);
+          return { k, ramp: ramps[Math.floor(ramps.length / 2)] };
+        };
+        const t0 = performance.now();
+        const stepFn = () => {
+          const cv = document.querySelector('.project-blob');
+          const ov = document.querySelector('.case-overlay');
+          const k = cv ? Number(cv.dataset.k) : NaN;
+          const ph = ov ? ov.dataset.phase : 'gone';
+          // En reposo no hay ventana (k aún NaN): vale el primer frame.
+          const kOk = wantPhase === null || (k > k0 && k < k1);
+          const phOk = wantPhase === null || ph === wantPhase;
+          if (cv && kOk && phOk) {
+            const s = analyze(cv);
+            // Forma más ancha que el lienzo (colapso en angostos): la fila
+            // nace dentro de la forma y no hay borde medible. Se sigue
+            // mirando: k crece y R encoje hasta mostrar borde (tope 0.92,
+            // tras el cual se acepta lo que haya y el assert decide).
+            if (s.ramp === 0 && wantPhase === 'closing' && k < 0.92) {
+              requestAnimationFrame(stepFn);
+              return;
+            }
+            resolve(s);
+            return;
+          }
+          // Timeout generoso desde la instalación: bajo carga paralela el
+          // tap puede demorarse segundos (actionability) y la ventana de k
+          // solo existe 1s tras el dispatch.
+          if (performance.now() - t0 > 25000) {
+            resolve(null);
+            return;
+          }
+          requestAnimationFrame(stepFn);
+        };
+        requestAnimationFrame(stepFn);
+      }),
+    [k0, k1, phase]
+  );
+}
+
+test('caso sombra — el morph conserva sombra al expandir y al encoger', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  // Referencia en reposo (misma técnica, sombra conocida y visible): la
+  // métrica se calibra sola por viewport. Sin este suelo, una sombra rota
+  // en todas partes pasaría de forma vacua por la vía relativa.
+  const ambient = await catchRamp(page, -1, 2, null);
+  expect(ambient, 'muestra en reposo').not.toBeNull();
+  expect(ambient.ramp, `reposo k=${ambient.k}`).toBeGreaterThan(12);
+  // Sonda instalada ANTES del tap (atrapa el primer frame en ventana).
+  const expandP = catchRamp(page, 0.2, 0.5, 'expanding');
+  await page.waitForTimeout(100);
+  await page.locator('.carousel-card[data-index="0"]').click();
+  const sample = await expandP;
+  expect(sample, 'muestra a mitad de expansión').not.toBeNull();
+  expect(sample.ramp, `expand k=${sample.k} ref=${ambient.ramp}`).toBeGreaterThanOrEqual(ambient.ramp * 0.5);
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  // A mitad del colapso: mismo orden que el reposo también (ventana
+  // amplia: si la forma aún desborda el lienzo se sigue hasta k 0.92).
+  const collapseP = catchRamp(page, 0.3, 0.95, 'closing');
+  await page.waitForTimeout(100);
+  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  const sample2 = await collapseP;
+  expect(sample2, 'muestra a mitad del colapso').not.toBeNull();
+  expect(sample2.ramp, `collapse k=${sample2.k} ref=${ambient.ramp}`).toBeGreaterThanOrEqual(ambient.ramp * 0.5);
+  await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   expect(errors).toEqual([]);
 });
 
