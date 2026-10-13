@@ -28,6 +28,9 @@ import {
   lerp3,
   traceBlob,
   easeCircInOut,
+  createJelly,
+  stepJelly,
+  jellyAt,
 } from "./blob-physics";
 import "./project-blob.css";
 
@@ -56,6 +59,10 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     colorTgt: hexToRgb(items[0].color),
     shape: { ...BLOB_SHAPES[0] },
     shapeTgt: { ...BLOB_SHAPES[0] },
+    // Gelatina por puntero (evidencia createPhysics): resortes radiales +
+    // último puntero conocido (coords de viewport).
+    jelly: null,
+    pointer: { x: 0, y: 0, vx: 0, vy: 0, t: 0, seen: false },
     // Morf de caso ( expanding/collapsing ).
     animT0: 0,
     p0: null,
@@ -106,9 +113,21 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
 
     // Reparent ELIMINADO (modelo cortina): el canvas vive siempre en la
     // sección; solo cambian opacidad y forma. Se borra en vez de parchar.
-    const blobPath = (cx, cy, R, shape, breath) => {
+    const blobPath = (cx, cy, R, shape, breath, jelly) => {
       ctx.beginPath();
-      traceBlob(ctx, cx, cy, R, shape, breath);
+      traceBlob(ctx, cx, cy, R, shape, breath, 96, jelly);
+    };
+
+    // Puntero para la gelatina: posición + velocidad (px/s) al evento.
+    const onPointerMove = (e) => {
+      const now = performance.now() / 1000;
+      const dt = Math.max(0.001, now - (sim.pointer.t || now));
+      sim.pointer.vx = ((e.clientX - sim.pointer.x) / dt) * (sim.pointer.seen ? 1 : 0);
+      sim.pointer.vy = ((e.clientY - sim.pointer.y) / dt) * (sim.pointer.seen ? 1 : 0);
+      sim.pointer.x = e.clientX;
+      sim.pointer.y = e.clientY;
+      sim.pointer.t = now;
+      sim.pointer.seen = true;
     };
 
     const drawAmbient = (t) => {
@@ -120,6 +139,44 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         : 1 + Math.sin((t / BLOB.breathPeriod) * Math.PI * 2) * BLOB.breathAmp;
       const cx = sim.ax + Math.sin((t / BLOB.driftPeriod) * Math.PI * 2) * BLOB.driftPx;
       const cy = sim.ay + Math.cos((t / (BLOB.driftPeriod * 1.3)) * Math.PI * 2) * BLOB.driftPx * 0.6;
+      // Gelatina: el puntero (coords viewport → locales por rect) empuja
+      // con su velocidad; solo en reposo con movimiento (evidencia).
+      let jellyFn = null;
+      if (sim.reduced) {
+        canvas.dataset.jelly = "0";
+      } else if (sim.pointer.seen) {
+        if (!sim.jelly) sim.jelly = createJelly(BLOB.jellySamples);
+        // La velocidad es fresca al evento: decae en el loop para que un
+        // puntero quieto deje de inyectar energía (si no, nunca recupera).
+        const vdec = Math.exp(-8 * (sim.frameDt || 1 / 60));
+        sim.pointer.vx *= vdec;
+        sim.pointer.vy *= vdec;
+        const r = canvas.getBoundingClientRect();
+        const maxAbs = stepJelly(
+          sim.jelly,
+          sim.frameDt || 1 / 60,
+          sim.pointer.x - r.left,
+          sim.pointer.y - r.top,
+          sim.pointer.vx,
+          sim.pointer.vy,
+          cx,
+          cy,
+          sim.R,
+          {
+            freq: BLOB.jellyFreq,
+            damp: BLOB.jellyDamp,
+            neighbor: BLOB.jellyNeighbor,
+            gain: BLOB.jellyGain,
+            dent: BLOB.jellyDent,
+            posK: BLOB.jellyPosK,
+          }
+        );
+        canvas.dataset.jelly = String(Math.round(maxAbs));
+        const j = sim.jelly;
+        jellyFn = (theta) => jellyAt(j, theta);
+      } else {
+        canvas.dataset.jelly = "0";
+      }
       const light = rgbCss(shadeRgb(sim.color, 52));
       const base = rgbCss(sim.color);
       const dark = rgbCss(shadeRgb(sim.color, -40));
@@ -132,7 +189,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ctx.shadowColor = base;
       ctx.shadowBlur = BLOB.shadowBlur;
       ctx.fillStyle = g;
-      blobPath(cx, cy, sim.R, sim.shape, breath);
+      blobPath(cx, cy, sim.R, sim.shape, breath, jellyFn);
       ctx.fill();
       ctx.restore();
     };
@@ -187,6 +244,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         for (const key of ["amp1", "amp2", "sx", "sy"]) {
           sim.shape[key] += (sim.shapeTgt[key] - sim.shape[key]) * f;
         }
+        sim.frameDt = dt;
         drawAmbient(t);
         if (sim.reduced || !sim.visible || document.hidden) {
           sim.running = false;
@@ -385,6 +443,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     mo.observe(carousel, { attributes: true, attributeFilter: ["data-active-index"] });
     if (io) io.observe(canvas);
     window.addEventListener("resize", onResize);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
     mq.addEventListener("change", syncReduced);
 
     // Setup inicial (una vez por instancia) + aplicación de modo (en cada
@@ -431,9 +490,10 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       mo.disconnect();
       if (io) io.disconnect();
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointermove", onPointerMove);
       mq.removeEventListener("change", syncReduced);
     };
   });
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} />;
+  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} data-jelly="0" />;
 }
