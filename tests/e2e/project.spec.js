@@ -31,6 +31,106 @@ async function gotoProyectos(page) {
   return { errors };
 }
 
+// Caja visible del blob (geometría REAL, no k): bbox de píxeles opacos
+// que difieren del fondo plano, en px CSS de viewport. Null si invisible.
+// OJO: el negro transparente (bitmap recién realocado) difiere del papel:
+// el alfa <128 también es fondo, si no un canvas vacío mide fullscreen.
+async function blobBox(page) {
+  return page.evaluate(() => {
+    const cv = document.querySelector('.project-blob');
+    if (!cv) return null;
+    const r = cv.getBoundingClientRect();
+    const dpr = cv.width / Math.max(1, r.width);
+    const ctx = cv.getContext('2d');
+    const img = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    const W = cv.width;
+    const H = cv.height;
+    let x0 = W;
+    let y0 = H;
+    let x1 = -1;
+    let y1 = -1;
+    const step = 4;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const i = (y * W + x) * 4;
+        if (img[i + 3] < 128) continue;
+        const d =
+          Math.abs(img[i] - 233) + Math.abs(img[i + 1] - 224) + Math.abs(img[i + 2] - 207);
+        if (d > 60) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return null;
+    return {
+      x: r.left + x0 / dpr,
+      y: r.top + y0 / dpr,
+      w: (x1 - x0) / dpr,
+      h: (y1 - y0) / dpr,
+    };
+  });
+}
+
+// Grabadora in-page con rAF (densa, sin latencia CDP): registra k y ancho
+// visible juntos. El muestreo desde Node perdía ventanas bajo carga.
+// OJO medición: el negro transparente (bitmap recién realocado) difiere
+// del papel; alfa<128 también es fondo o un canvas vacío mide fullscreen.
+async function startTraj(page) {
+  await page.evaluate(() => {
+    window.__traj = [];
+    const cv = document.querySelector('.project-blob');
+    const PAPER = [233, 224, 207];
+    const rec = () => {
+      const ov = document.querySelector('.case-overlay');
+      const r = cv.getBoundingClientRect();
+      const dpr = cv.width / Math.max(1, r.width);
+      const ctx = cv.getContext('2d');
+      const img = ctx.getImageData(0, 0, cv.width, cv.height).data;
+      const W = cv.width;
+      const H = cv.height;
+      let x0 = W;
+      let x1 = -1;
+      const step = 6;
+      for (let y = 0; y < H; y += step) {
+        for (let x = 0; x < W; x += step) {
+          const i = (y * W + x) * 4;
+          if (img[i + 3] < 128) continue;
+          if (
+            Math.abs(img[i] - PAPER[0]) + Math.abs(img[i + 1] - PAPER[1]) + Math.abs(img[i + 2] - PAPER[2]) >
+            60
+          ) {
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+          }
+        }
+      }
+      window.__traj.push({
+        k: Number(cv.dataset.k),
+        w: x1 < 0 ? 0 : (x1 - x0) / dpr,
+        phase: ov ? ov.dataset.phase : 'gone',
+      });
+      if (window.__traj.length < 400) requestAnimationFrame(rec);
+    };
+    rec();
+  });
+}
+
+async function readTraj(page) {
+  return page.evaluate(() => window.__traj);
+}
+
+async function activeCardCenter(page) {
+  return page.evaluate(() => {
+    const el = document.querySelector('.carousel-card[data-active="true"]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+}
+
 async function arrowTo(page, target) {
   for (let k = 0; k < 8; k++) {
     const idx = await page.evaluate(() => Number(document.querySelector('.carousel').dataset.activeIndex));
@@ -50,12 +150,87 @@ async function arrowTo(page, target) {
   );
 }
 
+test('caso fondo — al abrir, el detalle queda sobre fondo papel, no azul', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  await arrowTo(page, 4);
+  await page.locator('.carousel-card[data-index="4"]').click();
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  const paperDist = () =>
+    page.evaluate(() => {
+      const cv = document.querySelector('.project-blob');
+      const ctx = cv.getContext('2d');
+      const d = ctx.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
+      return Math.abs(d[0] - 233) + Math.abs(d[1] - 224) + Math.abs(d[2] - 207);
+    });
+  await page.waitForTimeout(2000);
+  // Fondo neutro de página (#e9e0cf), no el azul del blob (distancia >300).
+  expect(await paperDist()).toBeLessThan(60);
+  // Ni un resize posterior lo repinta de azul (el frame tardío era el bug).
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(600);
+  expect(await paperDist()).toBeLessThan(60);
+  expect(errors).toEqual([]);
+});
+
+test('caso fade — Proyectos se desvanece gradual antes de abrir del todo', async ({ page }) => {
+  const { errors } = await gotoProyectos(page);
+  await page.evaluate(() => {
+    window.__fade = [];
+    const t0 = performance.now();
+    const rec = () => {
+      const b = document.querySelector('.body');
+      const ov = document.querySelector('.case-overlay');
+      window.__fade.push({
+        t: Math.round(performance.now() - t0),
+        op: b ? Number(getComputedStyle(b).opacity) : NaN,
+        phase: ov ? ov.dataset.phase : '-',
+      });
+      if (window.__fade.length < 200) requestAnimationFrame(rec);
+    };
+    rec();
+  });
+  await page.locator('.carousel-card[data-index="0"]').click();
+  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  const fade = await page.evaluate(() => window.__fade);
+  // Gradual: empieza visible, baja por pasos intermedios, sin salto 1→0.
+  const ops = fade.map((s) => s.op).filter((v) => !Number.isNaN(v));
+  expect(ops[0]).toBeGreaterThan(0.9);
+  expect(ops[ops.length - 1]).toBeLessThan(0.05);
+  const steps = ops.filter((v, i) => i === 0 || v < ops[i - 1] - 0.02).length;
+  expect(steps).toBeGreaterThan(2);
+  for (let i = 1; i < ops.length; i++) {
+    expect(ops[i]).toBeLessThanOrEqual(ops[i - 1] + 0.001);
+  }
+  // Termina de desaparecer antes de que finalice la apertura.
+  const goneAt = fade.findIndex((s) => s.op < 0.05);
+  const openAt = fade.findIndex((s) => s.phase === 'open');
+  expect(goneAt).toBeGreaterThanOrEqual(0);
+  expect(openAt).toBeGreaterThanOrEqual(0);
+  expect(fade[goneAt].t).toBeLessThan(fade[openAt].t);
+  expect(errors).toEqual([]);
+});
+
 test('caso — tap en activa expande sin cambiar de URL', async ({ page }) => {
   const { errors } = await gotoProyectos(page);
   expect(await page.evaluate(() => Number(document.querySelector('.carousel').dataset.activeIndex))).toBe(0);
+  await startTraj(page);
   await page.locator('.carousel-card[data-index="0"]').click();
+  // Geometría REAL de apertura: la caja visible del MISMO blob CRECE
+  // (tarjeta → pantalla). Al cubrir se transparenta y deja de verse.
   const overlay = page.locator('.case-overlay.phase-open');
   await expect(overlay).toBeVisible({ timeout: 8000 });
+  const vw = await page.evaluate(() => window.innerWidth);
+  const seen = (await readTraj(page)).filter((s) => s.phase === 'expanding' && s.w > 0);
+  // ≥2 puntos bastan para probar crecimiento (bajo carga paralela el rAF
+  // se inaniciona y deja pocos frames del expand de 1s).
+  expect(seen.length).toBeGreaterThan(1);
+  // Empieza sustancialmente más pequeño de lo que termina (sin atarlo a
+  // un px absoluto: bajo carga la primera muestra llega más tarde).
+  expect(seen[0].w).toBeLessThan(seen[seen.length - 1].w * 0.75);
+  expect(seen[seen.length - 1].w).toBeGreaterThan(vw * 0.7);
+  for (let i = 1; i < seen.length; i++) {
+    expect(seen[i].w).toBeGreaterThanOrEqual(seen[i - 1].w - 4);
+  }
   // Sin redirección: seguimos en home.
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('dialog', { name: 'Caso: Portfolio' })).toBeVisible();
@@ -152,41 +327,44 @@ test('caso cierre — el blob encoje desde el 100% sin volver a crecer', async (
   const { errors } = await gotoProyectos(page);
   await page.locator('.carousel-card[data-index="0"]').click();
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
+  // Grabación in-page con rAF (densa, sin latencia CDP): registra k y
+  // ancho visible juntos durante todo el cierre. El muestreo desde Node
+  // perdía la ventana bajo carga y falseaba el test.
+  await startTraj(page);
   await page.getByRole('button', { name: 'Cerrar caso' }).click();
-  // La hoja sale primero; el blob encoje después. Muestreo de k del morph
-  // (dataset publicado por el loop): monotónico 1→0, sin re-crecimiento.
-  const ks = await page.evaluate(
-    () =>
-      new Promise((resolve) => {
-        const out = [];
-        const id = setInterval(() => {
-          const blob = document.querySelector('.project-blob');
-          if (!blob) {
-            clearInterval(id);
-            resolve(out);
-            return;
-          }
-          const v = Number(blob.dataset.k);
-          if (!Number.isNaN(v)) out.push(v);
-          if (out.length >= 10) {
-            clearInterval(id);
-            resolve(out);
-          }
-        }, 100);
-      })
-  );
-  // La curva de colapso: desde que arranca (>0.5) baja monotónica hasta
-  // ~0 sin re-crecimiento (las primeras muestras pueden ser residuo
-  // pre-colapso; ver FOLLOW-UP en ESTADO).
-  const start = ks.findIndex((v) => v > 0.5);
+  const vw = await page.evaluate(() => window.innerWidth);
+  await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
+  const traj = await readTraj(page);
+  // Ventana de colapso: desde que k arranca (~0) hasta que termina (~1).
+  const start = traj.findIndex((s) => s.phase === 'closing' && s.k < 0.2);
   expect(start).toBeGreaterThanOrEqual(0);
-  const curve = ks.slice(start);
+  const end = traj.findIndex((s, i) => i > start && (s.k > 0.95 || s.phase === 'gone'));
+  // Solo fase closing: lo posterior a 'gone' es realloc transparente o
+  // ambiente de vuelta, no colapso.
+  const curve = traj
+    .slice(start, end === -1 ? undefined : end + 1)
+    .filter((s) => s.phase === 'closing' && s.w > 0);
   expect(curve.length).toBeGreaterThan(3);
-  expect(curve[0]).toBeGreaterThan(0.9);
-  expect(curve[curve.length - 1]).toBeLessThan(0.1);
+  // Empieza cubriendo (ancho de viewport) y termina sustancialmente
+  // más pequeño (px absolutos, no ratio: en tablet el blob base ya es
+  // grande y el ratio falseaba)…
+  expect(curve[0].w).toBeGreaterThan(vw * 0.6);
+  expect(curve[0].w - curve[curve.length - 1].w).toBeGreaterThan(100);
+  // …sin re-crecer en el camino, mientras k sube 0→1 (la relación k↔tamaño
+  // es la prueba de dirección: con extremos invertidos, k↑ era expansión).
   for (let i = 1; i < curve.length; i++) {
-    expect(curve[i]).toBeLessThanOrEqual(curve[i - 1] + 0.01);
+    expect(curve[i].w).toBeLessThanOrEqual(curve[i - 1].w + 8);
   }
+  const ks = curve.map((s) => s.k).filter((v) => !Number.isNaN(v));
+  expect(ks[ks.length - 1]).toBeGreaterThan(0.9);
+  // …y termina sobre la tarjeta original.
+  const card = await activeCardCenter(page);
+  const homeBox = await blobBox(page);
+  expect(homeBox).not.toBeNull();
+  const homeCx = homeBox.x + homeBox.w / 2;
+  const homeCy = homeBox.y + homeBox.h / 2;
+  expect(Math.abs(homeCx - card.x)).toBeLessThan(130);
+  expect(Math.abs(homeCy - card.y)).toBeLessThan(130);
   await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   await expect(page.locator('.project-blob.full')).toHaveCount(0);
   await expect(page.locator('canvas.project-blob')).toHaveCount(1);

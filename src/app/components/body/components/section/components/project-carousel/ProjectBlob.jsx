@@ -146,10 +146,12 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ctx.restore();
     };
 
-    // Frame del morph: interpola pose p0→p1 con k (0..1). El color se
-    // transparenta con (1-k): al cubrir queda el fondo plano y al cerrar
-    // recupera color encogiendo (decisión usuario, sin fotos).
-    const drawMorph = (k) => {
+    // Frame del morph: interpola pose p0→p1 con k (0..1). Al abrir, el
+    // color se transparenta con (1-k) hasta el fondo plano. Al cerrar, el
+    // alfa sube RÁPIDO (min(1,tt*4)): el blob se materializa casi a tamaño
+    // completo y de ahí encoje visible — con (1-k) tardaba ~500ms invisible
+    // y aparecía grande de golpe, leyéndose como "re-expansión".
+    const drawMorph = (k, alpha) => {
       const { w, h } = sim;
       const cx = sim.p0.x + (sim.p1.x - sim.p0.x) * k;
       const cy = sim.p0.y + (sim.p1.y - sim.p0.y) * k;
@@ -164,9 +166,9 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#e9e0cf";
       ctx.fillRect(0, 0, w, h);
-      if (k <= 0) return;
+      if (k <= 0 || alpha <= 0) return;
       ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, 1 - k));
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       blobPath(cx, cy, R, shape, 1);
       ctx.clip();
       const g = ctx.createLinearGradient(0, cy - R, 0, cy + R);
@@ -199,13 +201,28 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         sim.raf = requestAnimationFrame(loop);
         return;
       }
+      // covering es estático por diseño (frame papel de la transición): un
+      // frame tardío (p. ej. reporte inicial del IO tras re-observar en un
+      // re-render) calcularía tt saturado con alfa 1 y plantaría azul sólido
+      // para siempre. Aquí no se pinta: el papel persiste.
+      if (sim.mode === "covering") {
+        sim.running = false;
+        sim.raf = 0;
+        return;
+      }
       const dur = sim.mode === "expanding" ? MORPH_MS : CLOSE_MS;
       const tt = Math.max(0, Math.min(1, (now - sim.animT0) / dur));
-      const k = sim.mode === "expanding" ? easeCircInOut(tt) : 1 - easeCircInOut(tt);
-      drawMorph(k);
+      // p0 es SIEMPRE la pose inicial y p1 la final en ambos modos, así k va
+      // 0→1 en los dos: abrir recorre sección→cubierto y cerrar recorre
+      // cubierto→tarjeta (contracción). El `1-ease` anterior invertía el
+      // cierre (iba de tarjeta a pantalla: expansión).
+      const k = easeCircInOut(tt);
+      // Continua desde 0 (sin salto respecto al cubierto transparente).
+      const alpha = sim.mode === "expanding" ? 1 - k : Math.min(1, tt * 4);
+      drawMorph(k, alpha);
       canvas.dataset.color = sim.caseHex;
-      // Hook de test (mismo patrón que dataset.color): el E2E afirma que
-      // el colapso es monotónico 1→0 sin re-crecimiento.
+      // Hook de test (mismo patrón que dataset.color): el E2E afirma
+      // monotonicidad de k por modo (la dirección la prueba la geometría).
       canvas.dataset.k = k.toFixed(3);
       if (tt < 1) {
         sim.raf = requestAnimationFrame(loop);
@@ -285,7 +302,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
           shape: { ...ROUND },
           color: [...sim.caseRgb],
         };
-        drawMorph(1);
+        drawMorph(1, 0);
         return;
       }
       ensureLoop();
@@ -376,7 +393,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
             moveToMain();
             resizeWindow();
             canvas.classList.add("full");
-            drawMorph(1);
+            drawMorph(1, 0);
           } else {
             endToIdle();
           }
@@ -392,7 +409,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     const onResize = () => {
       if (sim.mode === "covering") {
         resizeWindow();
-        drawMorph(1);
+        drawMorph(1, 0);
       } else if (sim.mode) {
         resizeWindow();
         ensureLoop();
@@ -430,7 +447,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.running = false;
       cancelAnimationFrame(sim.raf);
       sim.raf = 0;
-      drawMorph(1);
+      drawMorph(1, 0);
       canvas.dataset.color = sim.caseHex;
       canvas.dataset.k = "1.000";
     } else if (mode === "collapse" && sim.mode && sim.mode !== "collapsing") {
