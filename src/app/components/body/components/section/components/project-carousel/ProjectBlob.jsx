@@ -3,14 +3,17 @@
 /*
  * BLOB ÚNICO (regla 0-atajos, gate 4 AGENTS.md): este canvas es el único
  * objeto vivo del blob en todo el proyecto. Modos en el mismo loop y la
- * misma sim, sin duplicar canvas/loops ni fundidos cruzados:
+ * misma sim, sin duplicar canvas/loops ni fundidos cruzados. Modelo
+ * CORTINA: el canvas NO se mueve jamás (siempre hijo de la sección,
+ * tamaño de sección); solo cambian opacidad y forma:
  * - idle: deriva ambiental tras las tarjetas (color/forma de la activa).
- * - expanding: FIXED fullscreen; morfea a redondo y escala a cubrir (1s
+ * - expanding: morfea a redondo y escala a cubrir la SECCIÓN (1s
  *   Circ.easeInOut, evidencia `expend()`) transparentando su color a
  *   fondo plano al llegar al 100% (decisión usuario, sin fotos).
- * - covering: frame estático en fondo plano (como el stopFrame).
+ * - covering: estático TRANSPARENTE (no pinta): el papel lo pone la hoja
+ *   opaca del detalle, que vive DEBAJO en la misma sección.
  * - collapsing: morph al revés (.8s) desde el 100%, recupera color
- *   encogiendo hasta la tarjeta y vuelta a la sección.
+ *   encogiendo hasta la tarjeta. Dirección, duración y easing intactos.
  * Verificado en la referencia: un único bubble, morph in-place por puntos.
  */
 
@@ -67,10 +70,8 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    // OJO: section/carousel se resuelven UNA VEZ al montar. El canvas se
-    // reubica a <main> en modo caso: si se re-resolvieran desde el canvas,
-    // `closest('section')` daría null y el efecto moriría en silencio
-    // (cazado por E2E: el close dejaba .full colgado).
+    // OJO: section/carousel se resuelven UNA VEZ al montar (el canvas ya
+    // no se reubica jamás: `closest('section')` siempre resuelve).
     if (!sectionRef.current) {
       const section = canvas.closest("section.section");
       const carousel = section ? section.querySelector(".carousel") : null;
@@ -103,18 +104,8 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       );
     };
 
-    const resizeWindow = () => {
-      const w = Math.max(1, Math.floor(window.innerWidth));
-      const h = Math.max(1, Math.floor(window.innerHeight));
-      const dpr = Math.min(window.devicePixelRatio || 1, BLOB.dprCap);
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      sim.w = w;
-      sim.h = h;
-      sim.dpr = dpr;
-    };
-
+    // Reparent ELIMINADO (modelo cortina): el canvas vive siempre en la
+    // sección; solo cambian opacidad y forma. Se borra en vez de parchar.
     const blobPath = (cx, cy, R, shape, breath) => {
       ctx.beginPath();
       traceBlob(ctx, cx, cy, R, shape, breath);
@@ -146,11 +137,14 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ctx.restore();
     };
 
-    // Frame del morph: interpola pose p0→p1 con k (0..1). Al abrir, el
-    // color se transparenta con (1-k) hasta el fondo plano. Al cerrar, el
-    // alfa sube RÁPIDO (min(1,tt*4)): el blob se materializa casi a tamaño
-    // completo y de ahí encoje visible — con (1-k) tardaba ~500ms invisible
-    // y aparecía grande de golpe, leyéndose como "re-expansión".
+    // Frame del morph: interpola pose p0→p1 con k (0..1). El lienzo es
+    // TRANSPARENTE salvo la forma: al abrir, el color se transparenta con
+    // (1-k) hasta fundirse con la hoja opaca de papel que vive debajo (el
+    // detalle es el primer hijo de la sección, el canvas el segundo). Al
+    // cerrar, el alfa sube RÁPIDO (min(1,tt*4)): el blob se materializa
+    // casi a tamaño completo y de ahí encoje visible — con (1-k) tardaba
+    // ~500ms invisible y aparecía grande de golpe, leyéndose como
+    // "re-expansión".
     const drawMorph = (k, alpha) => {
       const { w, h } = sim;
       const cx = sim.p0.x + (sim.p1.x - sim.p0.x) * k;
@@ -164,8 +158,6 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       };
       const color = lerp3(sim.p0.color, sim.p1.color, k);
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#e9e0cf";
-      ctx.fillRect(0, 0, w, h);
       if (k <= 0 || alpha <= 0) return;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
@@ -201,10 +193,10 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         sim.raf = requestAnimationFrame(loop);
         return;
       }
-      // covering es estático por diseño (frame papel de la transición): un
-      // frame tardío (p. ej. reporte inicial del IO tras re-observar en un
+      // covering es estático por diseño (lienzo transparente: un frame
+      // tardío (p. ej. reporte inicial del IO tras re-observar en un
       // re-render) calcularía tt saturado con alfa 1 y plantaría azul sólido
-      // para siempre. Aquí no se pinta: el papel persiste.
+      // para siempre. Aquí no se pinta: la hoja opaca de debajo pone el papel.
       if (sim.mode === "covering") {
         sim.running = false;
         sim.raf = 0;
@@ -241,47 +233,21 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       }
     };
 
-    // Reparentar a <main> al expandir (y devolver al cerrar): el fundido
-    // de .body pondría opacity:0 a TODO su subárbol incluido este canvas
-    // (la opacidad no se puede excluir por descendiente). Sigue siendo EL
-    // MISMO elemento, bitmap y loop intactos: la identidad se conserva.
-    const moveToMain = () => {
-      // Selector "main" a secas: el module CSS renombra la clase (no es .home).
-      const main = document.querySelector("main");
-      if (main && canvas.parentElement !== main) {
-        sim.homeParent = canvas.parentElement;
-        sim.homeNext = canvas.nextSibling;
-        main.appendChild(canvas);
-      }
-    };
-    const moveBackHome = () => {
-      if (sim.homeParent) {
-        sim.homeParent.insertBefore(canvas, sim.homeNext);
-        sim.homeParent = null;
-        sim.homeNext = null;
-      }
-    };
     const startExpand = (slug) => {
       const item = CASES[slug];
       sim.caseHex = item ? item.color : "#cf4409";
       sim.caseRgb = hexToRgb(sim.caseHex);
-      // Pose inicial = estado vivo actual en coords de viewport.
-      const r = canvas.getBoundingClientRect();
-      const sx = r.width / Math.max(1, sim.w);
-      const sy = r.height / Math.max(1, sim.h);
-      const p0 = {
-        x: r.left + sim.ax * sx,
-        y: r.top + sim.ay * sy,
-        R: sim.R * Math.max(sx, sy),
+      // Cortina: pose inicial DIRECTA en coords de sección (el canvas no se
+      // mueve: sim.ax/ay/R ya viven en ese espacio, sin conversiones).
+      sim.p0 = {
+        x: sim.ax,
+        y: sim.ay,
+        R: sim.R,
         shape: { ...sim.shape },
         color: [...sim.color],
       };
-      canvas.classList.add("full");
-      moveToMain();
-      resizeWindow();
-      sim.p0 = p0;
-      // Cobertura exacta de esquinas (la evidencia escala su plantilla ×6
-      // viewport: visualmente equivalente).
+      // Cobertura de la SECCIÓN (100vh = pantalla): esquinas exactas (la
+      // evidencia escala su plantilla ×6 viewport: visualmente equivalente).
       sim.p1 = {
         x: sim.w / 2,
         y: sim.h / 2 - 40,
@@ -293,15 +259,6 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.animT0 = performance.now();
       canvas.dataset.color = sim.caseHex;
       if (sim.reduced) {
-        moveToMain();
-        resizeWindow();
-        sim.p1 = {
-          x: sim.w / 2,
-          y: sim.h / 2 - 40,
-          R: (Math.hypot(sim.w, sim.h) / 2) * 1.05,
-          shape: { ...ROUND },
-          color: [...sim.caseRgb],
-        };
         drawMorph(1, 0);
         return;
       }
@@ -309,8 +266,9 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     };
 
     // Flujo único: cerrar SOLO desde el 100% cubierto. Vuelta desde la
-    // pose cubierta hacia la pose de sección (ancla en coords de viewport;
-    // el lienzo sigue fixed hasta el final). Mismo objeto, mismo loop.
+    // pose cubierta hacia la tarjeta, en coords de SECCIÓN (offset entre
+    // rects, sin viewport). Mismo objeto, mismo loop. Dirección, duración
+    // y easing INTACTOS (validados, no se tocan).
     const startCollapse = () => {
       if (!sim.mode || sim.mode === "collapsing") return;
       sim.p0 = {
@@ -320,12 +278,12 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         shape: { ...ROUND },
         color: sim.caseRgb ? [...sim.caseRgb] : [...sim.color],
       };
+      const kr = canvas.getBoundingClientRect();
       const c = carousel.getBoundingClientRect();
-      const axVp = c.left + c.width / 2;
       // R de sección en px (conservado de antes de expandir).
       sim.p1 = {
-        x: axVp,
-        y: c.top + c.height / 2,
+        x: c.left - kr.left + c.width / 2,
+        y: c.top - kr.top + c.height / 2,
         R: sim.R,
         shape: { ...sim.shape },
         color: [...sim.color],
@@ -344,8 +302,6 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.caseRgb = null;
       sim.p0 = null;
       sim.p1 = null;
-      canvas.classList.remove("full");
-      moveBackHome();
       resizeSection();
       onIndex(Number(carousel.dataset.activeIndex || 0));
     };
@@ -388,11 +344,9 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         cancelAnimationFrame(sim.raf);
         sim.running = false;
         if (sim.mode) {
-          // Con reduced no se anima: se planta el estado final del modo.
+          // Con reduced no se anima: se planta el estado final del modo
+          // (transparente: la hoja opaca de debajo pone el papel).
           if (sim.mode === "covering" || sim.mode === "expanding") {
-            moveToMain();
-            resizeWindow();
-            canvas.classList.add("full");
             drawMorph(1, 0);
           } else {
             endToIdle();
@@ -407,11 +361,13 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     syncReduced();
 
     const onResize = () => {
+      // Cortina: el lienzo siempre mide la sección (sin viewport). En
+      // covering basta re-medir (el bitmap se limpia y la hoja opaca de
+      // debajo sigue poniendo el papel).
       if (sim.mode === "covering") {
-        resizeWindow();
-        drawMorph(1, 0);
+        resizeSection();
       } else if (sim.mode) {
-        resizeWindow();
+        resizeSection();
         ensureLoop();
       } else {
         resizeSection();
@@ -441,8 +397,9 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     if (mode === "expand" && sim.mode !== "expanding" && sim.mode !== "covering") {
       startExpand(caseView.slug);
     } else if (mode === "cover" && sim.mode === "expanding") {
-      // Cubierto = fondo plano estático, sin loop (el loop de expanding
-      // ya pintó el último frame; se asegura por si el timing derivó).
+      // Cubierto = lienzo transparente estático, sin loop (el loop de
+      // expanding ya pintó el último frame; se asegura por si el timing
+      // derivó). El papel lo pone la hoja opaca que vive debajo.
       sim.mode = "covering";
       sim.running = false;
       cancelAnimationFrame(sim.raf);
@@ -452,6 +409,16 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       canvas.dataset.k = "1.000";
     } else if (mode === "collapse" && sim.mode && sim.mode !== "collapsing") {
       startCollapse();
+    } else if (
+      (mode === "expand" && sim.mode === "expanding") ||
+      (mode === "collapse" && sim.mode === "collapsing")
+    ) {
+      // Re-render a mitad del morph (este efecto corre sin deps: el cleanup
+      // de arriba cancela el rAF). Si el loop murió, se REANUDA sin reiniciar
+      // el morph (animT0 intacto, k sigue su curva wall-clock): dirección,
+      // duración y easing intactos. Sin esto, un render inoportuno dejaba la
+      // cortina en blanco (cazado en screenshot mid-expand).
+      ensureLoop();
     } else if (!mode && sim.mode) {
       endToIdle();
     }

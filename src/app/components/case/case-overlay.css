@@ -1,28 +1,41 @@
-/* Overlay de caso sin redirección: el BLOB ÚNICO (canvas de la sección en
-   modo fullscreen) hace el morph; aquí solo hoja de contenido + fundido de
-   la página trasera. Cerrado = oculto sin desmontar. */
+/* Cortina: el detalle vive DENTRO de la sección Proyectos (primer hijo),
+   apilado fijo detalle → blob → carrusel. Nada se mueve, nada salta de
+   capa: solo opacidad (qué se ve) y morph del blob. Cerrado = oculto sin
+   desmontar. */
 
-/* La página se desvanece mientras el blob crece (y vuelve al cerrar):
-   nada desaparece de golpe. */
-.body {
+/* Solo el contenido de Proyectos se desvanece mientras el blob crece (y
+   vuelve al cerrar): el resto de la página no se toca. Misma transición.
+   Con pointer-events:none: invisible = no clicable (el detalle vive DEBAJO
+   en la misma sección y debe recibir clics y rueda; sin z-index que salte). */
+.section .section-content {
     transition: opacity 0.45s ease-out;
 }
 
-body.case-open .body {
+.section.case-open .section-content {
     opacity: 0;
+    pointer-events: none;
+}
+
+/* Flujo único: la nav fija (z 9999) queda por encima del detalle absoluto;
+   antes la bloqueaba el overlay z15000. Se conserva bloqueada (sin tocar
+   z-index ni capas: lo invisible no recibe puntero). */
+body:has(section.case-open) .Navbar {
+    pointer-events: none;
 }
 
 /* R2: el scroll principal lo congela el JS (body fixed con offset, que
    preserva la posición: overflow:hidden en root reseteaba scrollY a 0,
    medido en E2E). Esta regla es solo marcador de estado, sin layout. */
-body.case-open {
+.section.case-open {
     overflow: clip;
 }
 
 .case-overlay {
-    position: fixed;
+    /* absolute inset 0 de la sección (100vh = pantalla): sin z-index a
+       propósito — primer hijo + posicionado = pinta debajo del blob (z 0)
+       y del contenido (z 1). Sin z-index/display que salten. */
+    position: absolute;
     inset: 0;
-    z-index: 15000;
     visibility: hidden;
     pointer-events: none;
 }
@@ -52,6 +65,10 @@ body.case-open {
     padding: calc(1rem + 60px) clamp(1rem, 4vw, 3em) 4rem;
     opacity: 0;
     transition: opacity 0.6s ease-out;
+    /* Fondo neutro PROPIO y opaco (decisión usuario: papel #e9e0cf para
+       todos los casos). El blob al cubrir se transparenta y esta hoja es
+       lo que se ve: sin display que salte, solo opacidad + visibilidad. */
+    background: #e9e0cf;
     /* Sin snap CSS: fijaba la hoja en el primer tope (207) y revertía
        los scrollTo programáticos (medido en E2E con proximity Y mandatory).
        El avance por bloques es 100% JS (una muesca = un bloque); el touch
@@ -176,7 +193,7 @@ body.case-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .body,
+    .section .section-content,
     .case-sheet {
         transition: none;
     }

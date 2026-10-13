@@ -11,17 +11,9 @@
     pointer-events: none;
 }
 
-/* Modo caso: EL MISMO canvas pasa a fullscreen (regla 0-atajos: sin segundo
-   canvas ni fundidos cruzados). Misma imagen, mismo loop, cero transferencia. */
-.project-blob.full {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    /* 14999: sobre la nav (9999) pero bajo la hoja del overlay (15000),
-       que vive después en el DOM dentro de su propio contexto. */
-    z-index: 14999;
-}
+/* Modo caso ELIMINADO (modelo cortina): el canvas no se mueve jamás —
+   siempre a tamaño de sección. Solo cambian opacidad y forma. Se borra
+   la regla .full en vez de parcharla. */
 
 .carousel-view {
     position: relative;

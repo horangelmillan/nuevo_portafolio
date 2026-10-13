@@ -31,6 +31,11 @@ export default function CaseOverlay() {
 
   const item = caseView ? CASES[caseView.slug] : null;
   const open = phase === "expanding" || phase === "open" || phase === "closing";
+  // Cortina: la clase vive en la PROPIA sección (padre directo, estable:
+  // el canvas ya no se reubica), no en body. Solo el contenido de
+  // Proyectos se desvanece; el resto de la página no se toca.
+  const sectionEl = () =>
+    document.querySelector(".case-overlay")?.parentElement ?? null;
 
   const later = (fn, ms) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -83,7 +88,7 @@ export default function CaseOverlay() {
     if (caseView && !wasOpen.current) {
       wasOpen.current = true;
       prevFocus.current = document.activeElement;
-      document.body.classList.add("case-open");
+      sectionEl()?.classList.add("case-open");
       lockScroll();
       resetSheet();
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -121,7 +126,7 @@ export default function CaseOverlay() {
     if (reduced || !cv) {
       useStore.getState().setCaseView(null);
       setPhase("idle");
-      document.body.classList.remove("case-open");
+      sectionEl()?.classList.remove("case-open");
       unlockScroll();
       if (prevFocus.current instanceof HTMLElement) {
         prevFocus.current.focus({ preventScroll: true });
@@ -137,7 +142,7 @@ export default function CaseOverlay() {
     later(() => {
       useStore.getState().setCaseView(null);
       setPhase("idle");
-      document.body.classList.remove("case-open");
+      sectionEl()?.classList.remove("case-open");
       unlockScroll();
       if (prevFocus.current instanceof HTMLElement) {
         prevFocus.current.focus({ preventScroll: true });

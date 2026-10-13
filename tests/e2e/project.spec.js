@@ -155,20 +155,31 @@ test('caso fondo — al abrir, el detalle queda sobre fondo papel, no azul', asy
   await arrowTo(page, 4);
   await page.locator('.carousel-card[data-index="4"]').click();
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
-  const paperDist = () =>
+  // Cortina: el lienzo se transparenta al cubrir y el papel lo pone la
+  // hoja opaca que vive debajo (primer hijo de la sección).
+  const surface = () =>
     page.evaluate(() => {
+      const sheet = document.querySelector('.case-sheet');
       const cv = document.querySelector('.project-blob');
       const ctx = cv.getContext('2d');
       const d = ctx.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
-      return Math.abs(d[0] - 233) + Math.abs(d[1] - 224) + Math.abs(d[2] - 207);
+      return {
+        bg: getComputedStyle(sheet).backgroundColor,
+        alpha: d[3],
+      };
     });
   await page.waitForTimeout(2000);
-  // Fondo neutro de página (#e9e0cf), no el azul del blob (distancia >300).
-  expect(await paperDist()).toBeLessThan(60);
+  // Hoja con fondo neutro de página (#e9e0cf), no el azul del blob…
+  let s = await surface();
+  expect(s.bg).toBe('rgb(233, 224, 207)');
+  // …y el canvas central transparente (la hoja de debajo es lo que se ve).
+  expect(s.alpha).toBeLessThan(128);
   // Ni un resize posterior lo repinta de azul (el frame tardío era el bug).
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await page.waitForTimeout(600);
-  expect(await paperDist()).toBeLessThan(60);
+  s = await surface();
+  expect(s.bg).toBe('rgb(233, 224, 207)');
+  expect(s.alpha).toBeLessThan(128);
   expect(errors).toEqual([]);
 });
 
@@ -178,11 +189,13 @@ test('caso fade — Proyectos se desvanece gradual antes de abrir del todo', asy
     window.__fade = [];
     const t0 = performance.now();
     const rec = () => {
-      const b = document.querySelector('.body');
+      // Cortina: solo el contenido de la sección Proyectos se apaga (el
+      // resto de la página no se toca).
+      const c = document.querySelectorAll('section.section')[2]?.querySelector('.section-content');
       const ov = document.querySelector('.case-overlay');
       window.__fade.push({
         t: Math.round(performance.now() - t0),
-        op: b ? Number(getComputedStyle(b).opacity) : NaN,
+        op: c ? Number(getComputedStyle(c).opacity) : NaN,
         phase: ov ? ov.dataset.phase : '-',
       });
       if (window.__fade.length < 200) requestAnimationFrame(rec);
@@ -219,7 +232,6 @@ test('caso — tap en activa expande sin cambiar de URL', async ({ page }) => {
   // (tarjeta → pantalla). Al cubrir se transparenta y deja de verse.
   const overlay = page.locator('.case-overlay.phase-open');
   await expect(overlay).toBeVisible({ timeout: 8000 });
-  const vw = await page.evaluate(() => window.innerWidth);
   const seen = (await readTraj(page)).filter((s) => s.phase === 'expanding' && s.w > 0);
   // ≥2 puntos bastan para probar crecimiento (bajo carga paralela el rAF
   // se inaniciona y deja pocos frames del expand de 1s).
@@ -227,9 +239,16 @@ test('caso — tap en activa expande sin cambiar de URL', async ({ page }) => {
   // Empieza sustancialmente más pequeño de lo que termina (sin atarlo a
   // un px absoluto: bajo carga la primera muestra llega más tarde).
   expect(seen[0].w).toBeLessThan(seen[seen.length - 1].w * 0.75);
-  expect(seen[seen.length - 1].w).toBeGreaterThan(vw * 0.7);
+  // Cobertura: el loop CORRIÓ HASTA k=1 (el dataset lo escribe el último
+  // frame y persiste; a k=1 el R cubre las esquinas por construcción y el
+  // test de fondo prueba el estado final transparente). Robusto ante
+  // muestreador disperso: basta UNA muestra post-fin (las hay de sobra).
+  const full = await readTraj(page);
+  expect(full.some((s) => s.k >= 1)).toBe(true);
   for (let i = 1; i < seen.length; i++) {
-    expect(seen[i].w).toBeGreaterThanOrEqual(seen[i - 1].w - 4);
+    // Tolerancia ±8 (como el cierre): el borde antialiaseado sobre lienzo
+    // transparente cuantiza en la rejilla de muestreo (paso 6px).
+    expect(seen[i].w).toBeGreaterThanOrEqual(seen[i - 1].w - 8);
   }
   // Sin redirección: seguimos en home.
   await expect(page).toHaveURL(/\/$/);
@@ -250,7 +269,8 @@ test('caso — mundocloud sin fotos y volver al carrusel', async ({ page }) => {
   // Cerrar devuelve al carrusel intacto (misma URL, misma activa).
   await page.getByRole('button', { name: 'Cerrar caso' }).click();
   await expect(page.locator('.case-overlay.phase-open')).toHaveCount(0);
-  // Al cerrar, el blob vuelve a la sección (sin .full) y sigue siendo uno.
+  // Cortina: el canvas no se mueve jamás (siempre hijo de SECTION, sin
+  // .full) y sigue siendo uno solo.
   await expect(page.locator('.project-blob.full')).toHaveCount(0);
   await expect(page.locator('canvas.project-blob')).toHaveCount(1);
   await expect(await page.evaluate(() => document.querySelector('.project-blob').parentElement.tagName)).toBe('SECTION');
@@ -263,11 +283,11 @@ test('caso — ESC cierra y el carrusel sigue navegable', async ({ page }) => {
   const { errors } = await gotoProyectos(page);
   await page.locator('.carousel-card[data-index="0"]').click();
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
-  // Regla 0-atajos: es EL MISMO blob de la sección, reubicado en <main>
-  // (un solo canvas.project-blob en todo el DOM).
-  await expect(page.locator('.project-blob.full')).toHaveCount(1);
+  // Regla 0-atajos + cortina: es EL MISMO blob, siempre en su sección
+  // (un solo canvas.project-blob en todo el DOM, sin .full ni reparent).
+  await expect(page.locator('.project-blob.full')).toHaveCount(0);
   await expect(page.locator('canvas.project-blob')).toHaveCount(1);
-  await expect(await page.evaluate(() => document.querySelector('.project-blob').parentElement.tagName)).toBe('MAIN');
+  await expect(await page.evaluate(() => document.querySelector('.project-blob').parentElement.tagName)).toBe('SECTION');
   await page.keyboard.press('Escape');
   await expect(page.locator('.case-overlay.phase-open')).toHaveCount(0);
   await page.locator('.carousel-ctrl.right').click();
@@ -318,8 +338,9 @@ test('caso flujo — a mitad del expand no hay cierre posible', async ({ page })
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
   const phases = await page.evaluate(() => window.__phases);
   // Pasó por expanding con el botón no-clicable, y el ESC no cerró nada.
+  // El canvas sigue en su sección (la cortina no lo mueve jamás).
   expect(phases.some((p) => p.startsWith('expanding|none'))).toBe(true);
-  expect(await page.evaluate(() => document.querySelector('.project-blob').parentElement.tagName)).toBe('MAIN');
+  expect(await page.evaluate(() => document.querySelector('.project-blob').parentElement.tagName)).toBe('SECTION');
   expect(errors).toEqual([]);
 });
 
@@ -355,8 +376,13 @@ test('caso cierre — el blob encoje desde el 100% sin volver a crecer', async (
   for (let i = 1; i < curve.length; i++) {
     expect(curve[i].w).toBeLessThanOrEqual(curve[i - 1].w + 8);
   }
-  const ks = curve.map((s) => s.k).filter((v) => !Number.isNaN(v));
-  expect(ks[ks.length - 1]).toBeGreaterThan(0.9);
+  // El colapso CORRIÓ HASTA EL FIN: la primera muestra tras desmontar
+  // ('gone') lee k≈1 del dataset (lo escribe el último frame y persiste;
+  // el loop ambiental no lo toca). No se usa la última muestra EN curva:
+  // bajo carga el muestreador se dispersa y llega antes del fin.
+  const goneIdx = traj.findIndex((s, i) => i > start && s.phase === 'gone');
+  expect(goneIdx).toBeGreaterThan(start);
+  expect(traj[goneIdx].k).toBeGreaterThan(0.9);
   // …y termina sobre la tarjeta original.
   const card = await activeCardCenter(page);
   const homeBox = await blobBox(page);
