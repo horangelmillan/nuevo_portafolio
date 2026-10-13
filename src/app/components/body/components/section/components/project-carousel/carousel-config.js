@@ -112,4 +112,15 @@ export const BLOB = {
   // Presencia sin molestar: alfa del relleno (las tarjetas son casi opacas).
   fillAlpha: 0.9,
   dprCap: 2,
+  // Gelatina por puntero (arquitectura de la evidencia, números adaptados a
+  // nuestro motor paramétrico — ver blob-physics.js): el cursor empuja como
+  // un cuerpo blando (restitution 0: solo empuja, sin rebote) y la red
+  // elástica recupera (anchor suave + vecinos + centro).
+  jellySamples: 24,
+  jellyFreq: 1.4,
+  jellyDamp: 2.5,
+  jellyNeighbor: 60,
+  jellyGain: 0.02,
+  jellyDent: 14,
+  jellyPosK: 30,
 };
