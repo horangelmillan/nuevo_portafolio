@@ -19,6 +19,16 @@
       cada micro-rueda al punto de snap (scroll totalmente atascado con ticks
       pequeños). scroll-snap-align de section.css queda inerte sin contenedor. */
    -webkit-text-size-adjust: 100%; /* 2 */
+   /* Papel en la raíz: al congelar la página para el detalle la barra
+      global desaparece y la franja liberada muestra ESTE fondo, no blanco.
+      Las secciones ya son papel y el hero tapa la raíz con sus capas. */
+   background: #e9e0cf;
+   scrollbar-color: #ef9919 transparent;
+   /* OJO: NO `scrollbar-gutter: stable` global (medido: en entornos con
+      scrollbar overlay —móvil/Mac/headless— crea un gutter fantasma de 10px
+      que angosta la página sin necesidad). La compensación del tirón lateral
+      vive en `lockScroll` (CaseOverlay): solo actúa si un scrollbar clásico
+      desaparece de verdad. */
  }
 
 /* Sections
@@ -368,6 +378,11 @@ template {
 
 ::-webkit-scrollbar:horizontal {
   height: 10px;
+}
+
+/* Carril transparente: solo el thumb naranja flota sobre la página. */
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {

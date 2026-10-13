@@ -11,6 +11,10 @@
     pointer-events: none;
 }
 
+/* Modo caso ELIMINADO (modelo cortina): el canvas no se mueve jamás —
+   siempre a tamaño de sección. Solo cambian opacidad y forma. Se borra
+   la regla .full en vez de parcharla. */
+
 .carousel-view {
     position: relative;
     z-index: 1;

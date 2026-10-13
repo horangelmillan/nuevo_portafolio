@@ -68,6 +68,16 @@
     margin: 0.75rem 0 0.5rem;
 }
 
+/* La activa se puede abrir: cursor que invita al click. */
+.carousel-card[data-active="true"] {
+    cursor: pointer;
+}
+
+.carousel-card:focus-visible {
+    outline: 2px solid #cf4409;
+    outline-offset: 2px;
+}
+
 .carousel-context {
     color: #525252;
     font-size: clamp(0.95rem, 1.6vw, 1.1rem);

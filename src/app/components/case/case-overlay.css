@@ -1,0 +1,204 @@
+/* Cortina: el detalle vive DENTRO de la sección Proyectos (primer hijo),
+   apilado fijo detalle → blob → carrusel. Nada se mueve, nada salta de
+   capa: solo opacidad (qué se ve) y morph del blob. Cerrado = oculto sin
+   desmontar. */
+
+/* Solo el contenido de Proyectos se desvanece mientras el blob crece (y
+   vuelve al cerrar): el resto de la página no se toca. Misma transición.
+   Con pointer-events:none: invisible = no clicable (el detalle vive DEBAJO
+   en la misma sección y debe recibir clics y rueda; sin z-index que salte). */
+.section .section-content {
+    transition: opacity 0.45s ease-out;
+}
+
+.section.case-open .section-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Flujo único: nav (fija z 9999) y footer (fijo z 10) viven FUERA de la
+   sección y pintarían sobre la hoja; antes los tapaba el overlay z15000.
+   Se conservan apagados durante el caso (sin tocar z-index ni capas: la
+   regla manda sobre sus fades propios por especificidad y se retira sola
+   al cerrar, devolviéndoles su estado). Misma transición que ya tienen. */
+body:has(section.case-open) .Navbar,
+body:has(section.case-open) .Footer {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* R2: el scroll principal lo congela el JS (body fixed con offset, que
+   preserva la posición: overflow:hidden en root reseteaba scrollY a 0,
+   medido en E2E). Esta regla es solo marcador de estado, sin layout. */
+.section.case-open {
+    overflow: clip;
+}
+
+.case-overlay {
+    /* absolute inset 0 de la sección (100vh = pantalla): sin z-index a
+       propósito — primer hijo + posicionado = pinta debajo del blob (z 0)
+       y del contenido (z 1). Sin z-index/display que salten. */
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.case-overlay.phase-expanding,
+.case-overlay.phase-open,
+.case-overlay.phase-closing {
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* R1: la hoja ocupa el viewport completo (100dvh con fallback) con los
+   MISMO gutters que las secciones (.body: clamp(1rem,4vw,3em)), sin
+   max-width. R3: scroll interno con snap por bloques (proximity: mandatory
+   atascaba micro-ruedas, historial medido) y sin barra visible. */
+.case-sheet {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Sin anclaje de scroll: un swap de fuente a mitad del scroll reajusta
+       el scrollTop y falsea los topes del snap (cazado por E2E: 28px). */
+    overflow-anchor: none;
+    padding: calc(1rem + 60px) clamp(1rem, 4vw, 3em) 4rem;
+    opacity: 0;
+    transition: opacity 0.6s ease-out;
+    /* Fondo neutro PROPIO y opaco (decisión usuario: papel #e9e0cf para
+       todos los casos). El blob al cubrir se transparenta y esta hoja es
+       lo que se ve: sin display que salte, solo opacidad + visibilidad. */
+    background: #e9e0cf;
+    /* Sin snap CSS: fijaba la hoja en el primer tope (207) y revertía
+       los scrollTo programáticos (medido en E2E con proximity Y mandatory).
+       El avance por bloques es 100% JS (una muesca = un bloque); el touch
+       queda nativo fluido. Las reglas de align de los hijos se conservan
+       porque el JS las usa para calcular las paradas. */
+    scroll-snap-type: none;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.case-sheet::-webkit-scrollbar {
+    display: none;
+}
+
+.case-sheet > .case-photo,
+.case-sheet > .case-block,
+.case-sheet > .case-link {
+    scroll-snap-align: start;
+    scroll-margin-top: calc(1rem + 60px);
+}
+
+.phase-open .case-sheet {
+    opacity: 1;
+}
+
+/* Flujo único: el botón no existe como clic hasta que el caso abrió. */
+.case-close {
+    border: 0;
+    background: transparent;
+    color: #000000;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.phase-open .case-close {
+    pointer-events: auto;
+}
+
+.case-close:hover {
+    opacity: 1;
+}
+
+.case-close:focus-visible,
+.case-link:focus-visible {
+    outline: 2px solid #cf4409;
+    outline-offset: 2px;
+}
+
+.case-overlay .case-accent {
+    display: block;
+    height: 6px;
+    width: 3rem;
+    border-radius: 3px;
+    margin-top: 1rem;
+}
+
+.case-sheet h2 {
+    color: #000000;
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    margin: 0.75rem 0 0.5rem;
+    text-shadow: 0 1px 14px rgba(233, 224, 207, 0.9);
+}
+
+.case-meta {
+    color: #525252;
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    margin: 0 0 2rem;
+}
+
+.case-sheet .case-photo {
+    border-radius: 999px 999px 24px 24px;
+    overflow: hidden;
+    margin: 0 0 2.5rem;
+}
+
+.case-sheet .case-photo img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.case-sheet .case-photo-empty {
+    background: rgba(12, 12, 19, 0.08);
+    aspect-ratio: 16 / 9;
+}
+
+.case-block {
+    max-width: 65ch;
+    margin-bottom: 1.75rem;
+    /* OJO: son <section> y la regla global `section` les mete height:100vh
+       fijo. Se fija min-height:100dvh a propósito (decisión usuario: la hoja
+       baja por secciones de una pantalla) con altura natural por encima. */
+    height: auto;
+    min-height: 100dvh;
+}
+
+.case-block h3 {
+    color: #000000;
+    font-size: clamp(1.3rem, 2.6vw, 1.8rem);
+    margin: 0 0 0.5rem;
+}
+
+.case-block p {
+    color: #525252;
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    line-height: 1.7;
+    margin: 0;
+}
+
+.case-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #000000;
+    font-size: 1.1rem;
+    border: 1px solid #000000;
+    border-radius: 999px;
+    padding: 0.6rem 1.25rem;
+    text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section .section-content,
+    .case-sheet {
+        transition: none;
+    }
+}

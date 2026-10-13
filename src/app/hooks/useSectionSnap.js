@@ -72,7 +72,8 @@ export default function useSectionSnap() {
     const onWheel = (e) => {
       if (e.ctrlKey) return;
       if (document.body.dataset.booted !== "1") return;
-      if (useStore.getState().isAboutOpen) return;
+      const st8 = useStore.getState();
+      if (st8.isAboutOpen || st8.caseView) return;
       if (e.target && e.target.closest && e.target.closest(".about-panel")) return;
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault();

@@ -23,9 +23,9 @@ const activeIdx = (page) =>
 const offsetX = (page) =>
   page.evaluate(() => Number(document.querySelector('.carousel-track').dataset.offset));
 
-test('carrusel — renderiza 4 tarjetas, flechas y estado inicial', async ({ page }) => {
+test('carrusel — renderiza 5 tarjetas, flechas y estado inicial', async ({ page }) => {
   await gotoProyectos(page);
-  await expect(page.locator('.carousel-card')).toHaveCount(4);
+  await expect(page.locator('.carousel-card')).toHaveCount(5);
   await expect(page.locator('.carousel-ctrl.left')).toBeVisible();
   await expect(page.locator('.carousel-ctrl.right')).toBeVisible();
   const idx = await activeIdx(page);
@@ -94,8 +94,8 @@ test('carrusel — drags repetidos hasta el final centran la última', async ({ 
   await gotoProyectos(page);
   const box = await page.locator('.carousel-view').boundingBox();
   const y = box.y + box.height / 2;
-  for (let k = 0; k < 4; k++) {
-    if ((await activeIdx(page)) === 3) break;
+  for (let k = 0; k < 5; k++) {
+    if ((await activeIdx(page)) === 4) break;
     const x0 = box.x + box.width * 0.7;
     await page.mouse.move(x0, y);
     await page.mouse.down();
@@ -112,14 +112,15 @@ test('carrusel — drags repetidos hasta el final centran la última', async ({ 
   }
   // La última centra (el tope ya no "bloquea": el snap la lleva al centro)
   // y la flecha siguiente queda deshabilitada.
-  expect(await activeIdx(page)).toBe(3);
+  expect(await activeIdx(page)).toBe(4);
   await expect(page.locator('.carousel-ctrl.right')).toBeDisabled();
 });
 
 test('carrusel — teclado ArrowRight/ArrowLeft navega', async ({ page }) => {
   await gotoProyectos(page);
   expect(await activeIdx(page)).toBe(0);
-  await page.locator('.carousel').click();
+  // focus() en vez de click(): el click sobre la tarjeta activa ABRE el caso.
+  await page.locator('.carousel').focus();
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(
     () => Number(document.querySelector('.carousel').dataset.activeIndex) === 1,

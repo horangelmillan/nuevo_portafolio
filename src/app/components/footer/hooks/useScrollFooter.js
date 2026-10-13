@@ -10,10 +10,15 @@ const useScrollFooter = () => {
     const setIsShowFooter = useStore((s) => s.setIsShowFooter);
 
     useEffect(() => {
-        // Función que se ejecutará durante el scroll (limitada por throttle)
+        // Función que se ejecutará durante el scroll (limitada por throttle).
+        // Mide la página EN VIVO en vez del dato guardado: tras un scroll
+        // programático (p. ej. volver de un caso) el guardado llega viejo
+        // por el throttle y el footer se quedaba prendido fuera del final.
         const switchShowFooter = throttle(() => {
-            const { storeScrollData } = useStore.getState();
-            if (storeScrollData.windowHeight + storeScrollData.y >= storeScrollData.scrollHeight - 2) {
+            const y = window.scrollY;
+            const windowHeight = window.innerHeight;
+            const scrollHeight = document.documentElement.scrollHeight;
+            if (y + windowHeight >= scrollHeight - 2) {
                 setIsShowFooter(true);
             } else {
                 setIsShowFooter(false);
