@@ -19,7 +19,7 @@
 
 import { useEffect, useRef } from "react";
 import useStore from "@/app/store/store";
-import { CAROUSEL_ITEMS, BLOB_SHAPES, BLOB } from "./carousel-config";
+import { CAROUSEL_ITEMS, BLOB, blobShapeFor } from "./carousel-config";
 import { CASES } from "@/app/components/case/cases";
 import {
   hexToRgb,
@@ -57,12 +57,16 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     R: 100,
     color: hexToRgb(items[0].color),
     colorTgt: hexToRgb(items[0].color),
-    shape: { ...BLOB_SHAPES[0] },
-    shapeTgt: { ...BLOB_SHAPES[0] },
+    shape: blobShapeFor(items[0].slug),
+    shapeTgt: blobShapeFor(items[0].slug),
+    // Rect del canvas en viewport, CACHEADO (nunca por frame: el layout por
+    // frame es el coste que se elimina; se refresca en resize/scroll/evento).
+    rect: { left: 0, top: 0 },
     // Gelatina por puntero (evidencia createPhysics): resortes radiales +
-    // último puntero conocido (coords de viewport).
+    // último puntero conocido (coords de viewport + su equivalente local,
+    // calculado UNA vez por evento, no por frame).
     jelly: null,
-    pointer: { x: 0, y: 0, vx: 0, vy: 0, t: 0, seen: false },
+    pointer: { x: 0, y: 0, lx: 0, ly: 0, vx: 0, vy: 0, t: 0, seen: false },
     // Morf de caso ( expanding/collapsing ).
     animT0: 0,
     p0: null,
@@ -90,6 +94,19 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     const carousel = carouselRef.current;
     const sim = simRef.current;
 
+    // Rect cacheado: un solo layout por llamada (resize/scroll/evento).
+    // Si el puntero ya se vio, su equivalente local se re-deriva del
+    // viewport guardado (el scroll mueve el canvas bajo un puntero quieto).
+    const updateRect = () => {
+      const r = canvas.getBoundingClientRect();
+      sim.rect.left = r.left;
+      sim.rect.top = r.top;
+      if (sim.pointer.seen) {
+        sim.pointer.lx = sim.pointer.x - r.left;
+        sim.pointer.ly = sim.pointer.y - r.top;
+      }
+    };
+
     const resizeSection = () => {
       const w = Math.max(1, Math.floor(canvas.clientWidth || 1));
       const h = Math.max(1, Math.floor(canvas.clientHeight || 1));
@@ -102,6 +119,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.dpr = dpr;
       const s = section.getBoundingClientRect();
       const c = carousel.getBoundingClientRect();
+      updateRect();
       sim.ax = w / 2;
       sim.ay = c.top - s.top + c.height / 2;
       const free = Math.min(sim.ay, h - sim.ay);
@@ -119,6 +137,8 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     };
 
     // Puntero para la gelatina: posición + velocidad (px/s) al evento.
+    // El equivalente local se calcula AQUÍ (un layout por evento); el loop
+    // por frame reutiliza el cacheado, sin tocar el layout.
     const onPointerMove = (e) => {
       const now = performance.now() / 1000;
       const dt = Math.max(0.001, now - (sim.pointer.t || now));
@@ -128,6 +148,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.pointer.y = e.clientY;
       sim.pointer.t = now;
       sim.pointer.seen = true;
+      updateRect();
     };
 
     const drawAmbient = (t) => {
@@ -151,12 +172,11 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         const vdec = Math.exp(-8 * (sim.frameDt || 1 / 60));
         sim.pointer.vx *= vdec;
         sim.pointer.vy *= vdec;
-        const r = canvas.getBoundingClientRect();
         const maxAbs = stepJelly(
           sim.jelly,
           sim.frameDt || 1 / 60,
-          sim.pointer.x - r.left,
-          sim.pointer.y - r.top,
+          sim.pointer.lx,
+          sim.pointer.ly,
           sim.pointer.vx,
           sim.pointer.vy,
           cx,
@@ -358,21 +378,14 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ensureLoop();
     };
 
-    const endToIdle = () => {
-      sim.mode = null;
-      sim.caseRgb = null;
-      sim.p0 = null;
-      sim.p1 = null;
-      resizeSection();
-      onIndex(Number(carousel.dataset.activeIndex || 0));
-    };
-
-    const onIndex = (idx) => {
+    // Identidad por slug (no por índice): el orden del carrusel puede
+    // cambiar sin romper color/forma de cada proyecto.
+    const onSlug = (slug) => {
       if (sim.mode) return;
-      const i = Math.max(0, Math.min(items.length - 1, idx));
-      sim.colorTgt = hexToRgb(items[i].color);
-      sim.shapeTgt = { ...BLOB_SHAPES[i % BLOB_SHAPES.length] };
-      canvas.dataset.color = items[i].color;
+      const item = items.find((it) => it.slug === slug) || items[0];
+      sim.colorTgt = hexToRgb(item.color);
+      sim.shapeTgt = blobShapeFor(item.slug);
+      canvas.dataset.color = item.color;
       if (sim.reduced) {
         sim.color = [...sim.colorTgt];
         sim.shape = { ...sim.shapeTgt };
@@ -382,8 +395,19 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ensureLoop();
     };
 
+    const endToIdle = () => {
+      sim.mode = null;
+      sim.caseRgb = null;
+      sim.p0 = null;
+      sim.p1 = null;
+      // dataset.k NO se resetea: el último frame persiste como evidencia de
+      // fin de morph (el E2E de cierre lo lee tras desmontar).
+      resizeSection();
+      onSlug(carousel.dataset.activeSlug || "");
+    };
+
     const mo = new MutationObserver(() => {
-      onIndex(Number(carousel.dataset.activeIndex || 0));
+      onSlug(carousel.dataset.activeSlug || "");
     });
 
     const io =
@@ -396,7 +420,6 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
             { threshold: 0.05 }
           )
         : null;
-    if (io) io.observe(canvas);
 
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncReduced = () => {
@@ -413,7 +436,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
             endToIdle();
           }
         } else {
-          onIndex(Number(carousel.dataset.activeIndex || 0));
+          onSlug(carousel.dataset.activeSlug || "");
         }
       } else {
         ensureLoop();
@@ -440,8 +463,10 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     // dev: setup→cleanup→setup; con guard de "una vez" el segundo setup no
     // re-observaba tras el disconnect del cleanup y el MO moría en silencio
     // — cazado por E2E. Simétrico = correcto en mount, updates y StrictMode).
-    mo.observe(carousel, { attributes: true, attributeFilter: ["data-active-index"] });
+    mo.observe(carousel, { attributes: true, attributeFilter: ["data-active-slug"] });
     if (io) io.observe(canvas);
+    const onScroll = () => updateRect();
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     mq.addEventListener("change", syncReduced);
@@ -489,11 +514,12 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.running = false;
       mo.disconnect();
       if (io) io.disconnect();
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointermove", onPointerMove);
       mq.removeEventListener("change", syncReduced);
     };
   });
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} data-jelly="0" />;
+  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} data-jelly="0" data-k="0.000" />;
 }

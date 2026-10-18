@@ -63,7 +63,14 @@ export default function CaseOverlay() {
     // global: la caja de contenido vuelve a su ancho y nada se mueve). En
     // overlay (móvil/Mac: sbw 0) es no-op. Se mide ANTES de fijar.
     const sbw = window.innerWidth - document.documentElement.clientWidth;
-    bd.dataset.caseScroll = `${y}|${bd.style.position || ""}|${bd.style.top || ""}|${bd.style.width || ""}|${bd.style.paddingRight || ""}`;
+    // JSON (no "a|b|c"): ningún valor con "|" lo rompe.
+    bd.dataset.caseScroll = JSON.stringify({
+      y,
+      position: bd.style.position || "",
+      top: bd.style.top || "",
+      width: bd.style.width || "",
+      paddingRight: bd.style.paddingRight || "",
+    });
     bd.style.position = "fixed";
     bd.style.top = `-${y}px`;
     bd.style.width = "100%";
@@ -71,9 +78,15 @@ export default function CaseOverlay() {
   };
   const unlockScroll = () => {
     const bd = document.body;
-    const saved = bd.dataset.caseScroll;
-    if (saved === undefined) return;
-    const [y, position, top, width, paddingRight] = saved.split("|");
+    const raw = bd.dataset.caseScroll;
+    if (raw === undefined) return;
+    // Compat con el formato previo "a|b|c" (misma sesión, por si acaso).
+    let y = 0, position = "", top = "", width = "", paddingRight = "";
+    try {
+      ({ y = 0, position = "", top = "", width = "", paddingRight = "" } = JSON.parse(raw));
+    } catch {
+      [y, position, top, width, paddingRight] = raw.split("|");
+    }
     bd.style.position = position;
     bd.style.top = top;
     bd.style.width = width;

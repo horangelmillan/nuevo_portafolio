@@ -18,16 +18,38 @@ async function gotoProyectos(page) {
     document.querySelectorAll('section.section')[2].scrollIntoView({ block: 'center' });
   });
   await page.locator('.carousel-track').waitFor({ state: 'visible' });
-  await page.waitForTimeout(400);
+  // Medida inicial + fonts: espera por estado (asentado), no por tiempo.
+  // (data-settled nace en "0": solo el efecto montado publica "1".)
+  await page.waitForFunction(
+    () => document.querySelector('.carousel-track').dataset.settled === '1',
+    null,
+    { timeout: 8000 }
+  );
+  await page.evaluate(() => document.fonts.ready);
   // El scrollIntoView es suave: esperar a que el scrollY se estabilice
   // (el wait fijo dejaba cola de ~85px que falseaba el lock R2).
-  let prev = -1;
-  for (let i = 0; i < 20; i++) {
-    const y = await page.evaluate(() => window.scrollY);
-    if (y === prev) break;
-    prev = y;
-    await page.waitForTimeout(200);
-  }
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        let last = window.scrollY;
+        let lastT = performance.now();
+        const f = (t) => {
+          const y = window.scrollY;
+          if (y !== last) {
+            last = y;
+            lastT = t;
+          } else if (t - lastT > 400) {
+            resolve(true);
+            return;
+          }
+          requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+        setTimeout(() => resolve(true), 10000);
+      }),
+    null,
+    { timeout: 15000 }
+  );
   return { errors };
 }
 
@@ -168,7 +190,20 @@ test('caso fondo — al abrir, el detalle queda sobre fondo papel, no azul', asy
         alpha: d[3],
       };
     });
-  await page.waitForTimeout(2000);
+  await page.waitForFunction(
+    () => {
+      const sheet = document.querySelector('.case-sheet');
+      const cv = document.querySelector('.project-blob');
+      const ctx = cv.getContext('2d');
+      const d = ctx.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
+      return (
+        getComputedStyle(sheet).backgroundColor === 'rgb(233, 224, 207)' &&
+        d[3] < 128
+      );
+    },
+    null,
+    { timeout: 8000 }
+  );
   // Hoja con fondo neutro de página (#e9e0cf), no el azul del blob…
   let s = await surface();
   expect(s.bg).toBe('rgb(233, 224, 207)');
@@ -176,7 +211,19 @@ test('caso fondo — al abrir, el detalle queda sobre fondo papel, no azul', asy
   expect(s.alpha).toBeLessThan(128);
   // Ni un resize posterior lo repinta de azul (el frame tardío era el bug).
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-  await page.waitForTimeout(600);
+  await page.waitForFunction(
+    () => {
+      const cv = document.querySelector('.project-blob');
+      const ctx = cv.getContext('2d');
+      const d = ctx.getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data;
+      return (
+        getComputedStyle(document.querySelector('.case-sheet')).backgroundColor ===
+          'rgb(233, 224, 207)' && d[3] < 128
+      );
+    },
+    null,
+    { timeout: 8000 }
+  );
   s = await surface();
   expect(s.bg).toBe('rgb(233, 224, 207)');
   expect(s.alpha).toBeLessThan(128);
@@ -448,12 +495,27 @@ test('caso R2 — scroll principal bloqueado con caso abierto y restaurado al ce
   const lockedY = -Number(String(locked.top).replace('px', ''));
   expect(Math.abs(lockedY - y0)).toBeLessThan(8);
   expect(locked.y).toBe(0);
-  // PageDown / Espacio no mueven la página trasera.
+  // PageDown / Espacio no mueven la página trasera (ventana de observación
+  // en tiempo de página: resuelve si el scrollY no se movió en ~400ms).
   await page.keyboard.press('PageDown');
-  await page.waitForTimeout(400);
+  await page.waitForFunction(
+    (exp) =>
+      new Promise((resolve) => {
+        setTimeout(() => resolve(window.scrollY === exp), 400);
+      }),
+    locked.y,
+    { timeout: 5000 }
+  );
   expect(await page.evaluate(() => window.scrollY)).toBe(locked.y);
   await page.keyboard.press(' ');
-  await page.waitForTimeout(400);
+  await page.waitForFunction(
+    (exp) =>
+      new Promise((resolve) => {
+        setTimeout(() => resolve(window.scrollY === exp), 400);
+      }),
+    locked.y,
+    { timeout: 5000 }
+  );
   expect(await page.evaluate(() => window.scrollY)).toBe(locked.y);
   // Al cerrar, el scroll vuelve a vivir donde estaba (restore instant:
   // se espera al asentamiento en vez de leer a mitad de vuelo).
@@ -504,19 +566,28 @@ test('caso R3 — hoja baja por bloques (snap JS) sin atasco y sin barra', async
   const settleTop = async () => {
     let prevTop = -1;
     let stable = 0;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       const t = await page.evaluate(() => document.querySelector('.case-sheet').scrollTop);
       if (t === prevTop && ++stable >= 3) return t;
       if (t !== prevTop) stable = 0;
       prevTop = t;
-      await page.waitForTimeout(100);
+      // Un frame entre sondeos (polling rAF, no sleep fijo).
+      await page.waitForFunction(() => new Promise(requestAnimationFrame));
     }
     return prevTop;
   };
   // La fuente variable puede seguir cargando y mover el layout:
   // medir los topes DESPUÉS de fonts.ready, no antes.
   await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(300);
+  // Margen de frames para el re-layout tras el swap de fuente.
+  await page.waitForFunction(() => new Promise((resolve) => {
+    let n = 0;
+    const f = () => {
+      if (++n >= 15) resolve(true);
+      else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
   const stops2 = await page.evaluate(() => {
     const sheet = document.querySelector('.case-sheet');
     return Array.from(sheet.children)
@@ -779,7 +850,8 @@ test('caso sombra — el morph conserva sombra al expandir y al encoger', async 
   expect(ambient.ramp, `reposo k=${ambient.k}`).toBeGreaterThan(12);
   // Sonda instalada ANTES del tap (atrapa el primer frame en ventana).
   const expandP = catchRamp(page, 0.2, 0.5, 'expanding');
-  await page.waitForTimeout(100);
+  // Un frame para que la sonda grabe base antes del gesto.
+  await page.waitForFunction(() => new Promise(requestAnimationFrame));
   await page.locator('.carousel-card[data-index="0"]').click();
   const sample = await expandP;
   expect(sample, 'muestra a mitad de expansión').not.toBeNull();
@@ -788,7 +860,7 @@ test('caso sombra — el morph conserva sombra al expandir y al encoger', async 
   // A mitad del colapso: mismo orden que el reposo también (ventana
   // amplia: si la forma aún desborda el lienzo se sigue hasta k 0.92).
   const collapseP = catchRamp(page, 0.3, 0.95, 'closing');
-  await page.waitForTimeout(100);
+  await page.waitForFunction(() => new Promise(requestAnimationFrame));
   await page.getByRole('button', { name: 'Cerrar caso' }).click();
   const sample2 = await collapseP;
   expect(sample2, 'muestra a mitad del colapso').not.toBeNull();

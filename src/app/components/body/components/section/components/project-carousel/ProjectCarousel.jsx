@@ -89,6 +89,8 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       if (idx !== sim.active) {
         sim.active = idx;
         root.dataset.activeIndex = String(idx);
+        // Fuente de verdad por id para el blob (el índice se conserva para E2E).
+        root.dataset.activeSlug = items[idx] ? items[idx].slug : "";
       }
       for (let i = 0; i < els.length; i++) {
         const prox = proximity(sim.centers[i] + sim.x, viewCenter, sim.viewW);
@@ -326,13 +328,14 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       ref={rootRef}
       className="carousel"
       data-active-index="0"
+      data-active-slug={items[0] ? items[0].slug : ""}
       role="region"
       aria-roledescription="carrusel"
       aria-label="Proyectos destacados"
       tabIndex={0}
     >
       <div ref={viewRef} className="carousel-view">
-        <ul ref={trackRef} className="carousel-track" data-offset="0" data-settled="1">
+        <ul ref={trackRef} className="carousel-track" data-offset="0" data-settled="0">
           {items.map((it, i) => (
             <li
               key={it.title}

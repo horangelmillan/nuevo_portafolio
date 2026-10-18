@@ -48,8 +48,17 @@ test('about — ABOUT abre el panel con rol dialog', async ({ page }) => {
     null,
     { timeout: 8000 }
   );
-  // El panel re-sincroniza su top al terminar el colapso: margen de sobra.
-  await page.waitForTimeout(600);
+  // El panel re-sincroniza su top al terminar el colapso: espera por estado
+  // (panel bajo la nav), no por margen fijo.
+  await page.waitForFunction(
+    () => {
+      const nav = document.querySelector('.Navbar').getBoundingClientRect();
+      const panel = document.querySelector('.about-panel').getBoundingClientRect();
+      return panel.y >= nav.y + nav.height - 2;
+    },
+    null,
+    { timeout: 8000 }
+  );
   const [nav, panel] = await Promise.all([
     page.locator('.Navbar').boundingBox(),
     page.locator('.about-panel').boundingBox(),

@@ -10,12 +10,12 @@ const cinzel = localFont({
   src: "../../../../fonts/Cinzel-VariableFont_wght.ttf",
 });
 
-export default function Section({ sectionType = "plain", title, subtitle, content, carouselItems = null, reveal = false, revealAccents = [], revealLinks = {} }) {
+export default function Section({ id = null, sectionType = "plain", title, subtitle, content, carouselItems = null, reveal = false, revealAccents = [], revealLinks = {} }) {
   if (!title && !subtitle && !content) return null;
   const isHero = sectionType === "hero";
   const [revealMain, ...revealRest] = reveal ? String(content).split("\n") : [null, []];
   return (
-    <section className={isHero ? "section hero" : "section"}>
+    <section id={id} className={isHero ? "section hero" : "section"}>
       {/* Fondo vivo global fijo a nivel page.js (fase hero = v7). */}
       {/* Cortina: detalle abajo → blob en medio → carrusel arriba. Solo
           Proyectos (con carrusel) monta el detalle; el resto ni se entera. */}

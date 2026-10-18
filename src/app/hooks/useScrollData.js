@@ -29,11 +29,23 @@ const useScrollData = () => {
                 setIsFinalScroll(false);
             }
 
-            // Sección activa (0=hero..3=contacto): la nav resalta por scroll,
-            // no por ruta (SPA de una sola página). El selector del
-            // consumidor evita re-renders si el valor repite.
-            const idx = Math.max(0, Math.min(3, Math.round(scrollPosition / windowHeight)));
-            setActiveSection(idx);
+            // Sección activa por ID (no por índice): la sección cuyo centro
+            // contiene el centro del viewport. Robusto ante reorden o
+            // secciones de distinta altura (el round(scrollY/vh) asumía
+            // 4 secciones exactas de 1vh).
+            const mid = scrollPosition + windowHeight / 2;
+            let activeId = "hero";
+            let best = Infinity;
+            for (const sec of document.querySelectorAll("section.section[id]")) {
+              const r = sec.getBoundingClientRect();
+              const top = r.top + scrollPosition;
+              const d = Math.abs(top + r.height / 2 - mid);
+              if (d < best) {
+                best = d;
+                activeId = sec.id;
+              }
+            }
+            setActiveSection(activeId);
         };
         // rAF-throttle: como máximo una sincronización por frame, sin importar
         // cuántos eventos de scroll dispare el navegador.

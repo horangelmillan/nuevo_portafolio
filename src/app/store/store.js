@@ -12,7 +12,7 @@ const useStore = create((set) => ({
     setIsShowNavbar: (value) => set({ isShowNavbar: value }),
     isShowFooter: false,
     setIsShowFooter: (value) => set({ isShowFooter: value }),
-    activeSection: 0,
+    activeSection: "hero",
     setActiveSection: (value) => set({ activeSection: value }),
     isFinalScroll: false,
     setIsFinalScroll: (value) => set({ isFinalScroll: value}),

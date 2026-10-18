@@ -11,15 +11,7 @@ export const CASES = {
     date: "2026",
     role: "Diseño, desarrollo y operación",
     color: "#3b4fe4",
-    image: "/cases/mundocloud-hero.jpg",
-    imageAlt: "Portada del sitio corporativo de MundoCloud",
     siteUrl: "https://www.mundocloud.co",
-    gallery: [
-      {
-        src: "/cases/mundocloud-interior.jpg",
-        alt: "Secciones de servicios y confianza del sitio de MundoCloud",
-      },
-    ],
     blocks: [
       {
         heading: "Diseño y contenido",

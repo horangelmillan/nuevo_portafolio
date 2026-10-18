@@ -15,7 +15,39 @@ async function gotoProyectos(page) {
     document.querySelectorAll('section.section')[2].scrollIntoView({ block: 'center' });
   });
   await page.locator('.carousel-track').waitFor({ state: 'visible' });
-  await page.waitForTimeout(400); // medida inicial + fonts
+  // Medida inicial + fonts: espera por estado (asentado), no por tiempo.
+  // (data-settled nace en "0": solo el efecto montado publica "1".)
+  await page.waitForFunction(
+    () => document.querySelector('.carousel-track').dataset.settled === '1',
+    null,
+    { timeout: 8000 }
+  );
+  await page.evaluate(() => document.fonts.ready);
+  // El scrollIntoView es suave: esperar a que el scrollY se estabilice
+  // antes de usar coordenadas absolutas del ratón (si no, el drag arranca
+  // fuera de la vista y la pista no se mueve).
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        let last = window.scrollY;
+        let lastT = performance.now();
+        const f = (t) => {
+          const y = window.scrollY;
+          if (y !== last) {
+            last = y;
+            lastT = t;
+          } else if (t - lastT > 400) {
+            resolve(true);
+            return;
+          }
+          requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+        setTimeout(() => resolve(true), 10000);
+      }),
+    null,
+    { timeout: 15000 }
+  );
 }
 
 const activeIdx = (page) =>
@@ -66,7 +98,8 @@ test('carrusel — drag horizontal mueve la pista', async ({ page }) => {
   await page.mouse.down();
   for (let i = 1; i <= 12; i++) {
     await page.mouse.move(x0 - (i * box.width * 0.4) / 12, y);
-    await page.waitForTimeout(16);
+    // Ritmo de gesto humano: un frame entre moves (antes 16ms fijos).
+    await page.waitForFunction(() => new Promise(requestAnimationFrame));
   }
   await page.mouse.up();
   // Tras el snap, la pista quedó bajo cero y la tarjeta activa centrada.
@@ -101,7 +134,7 @@ test('carrusel — drags repetidos hasta el final centran la última', async ({ 
     await page.mouse.down();
     for (let i = 1; i <= 12; i++) {
       await page.mouse.move(x0 - (i * box.width * 0.5) / 12, y);
-      await page.waitForTimeout(16);
+      await page.waitForFunction(() => new Promise(requestAnimationFrame));
     }
     await page.mouse.up();
     await page.waitForFunction(

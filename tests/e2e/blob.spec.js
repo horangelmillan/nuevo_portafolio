@@ -13,7 +13,39 @@ async function gotoProyectos(page) {
     document.querySelectorAll('section.section')[2].scrollIntoView({ block: 'center' });
   });
   await page.locator('.carousel-track').waitFor({ state: 'visible' });
-  await page.waitForTimeout(400);
+  // Medida inicial + fonts: espera por estado (asentado), no por tiempo.
+  // (data-settled nace en "0": solo el efecto montado publica "1".)
+  await page.waitForFunction(
+    () => document.querySelector('.carousel-track').dataset.settled === '1',
+    null,
+    { timeout: 8000 }
+  );
+  await page.evaluate(() => document.fonts.ready);
+  // El scrollIntoView es suave: esperar a que el scrollY se estabilice
+  // antes de usar coordenadas absolutas del ratón (si no, el puntero cae
+  // fuera del blob/carrusel y el gesto no registra).
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        let last = window.scrollY;
+        let lastT = performance.now();
+        const f = (t) => {
+          const y = window.scrollY;
+          if (y !== last) {
+            last = y;
+            lastT = t;
+          } else if (t - lastT > 400) {
+            resolve(true);
+            return;
+          }
+          requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+        setTimeout(() => resolve(true), 10000);
+      }),
+    null,
+    { timeout: 15000 }
+  );
 }
 
 const blobColor = (page) =>
@@ -65,11 +97,38 @@ test('jelly — el puntero deforma y el blob recupera solo', async ({ page }) =>
   // Quieto ENCIMA: queda una abolladura pequeña y ESTABLE (contacto real),
   // no una oscilación creciente: la velocidad decae en el loop. Si la
   // velocidad no decayera, inyectaría energía eternamente (>10 y creciendo).
+  // Espera por estado (no por tiempo fijo): resuelve cuando la gelatina
+  // baja de 10 y se mantiene estable 800ms de tiempo de página.
   await page.mouse.move(cx, cy);
-  await isJelly(true);
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        const jelly = () => Number(document.querySelector('.project-blob').dataset.jelly);
+        const check = () => {
+          const a = jelly();
+          if (a >= 10) {
+            setTimeout(check, 120);
+            return;
+          }
+          setTimeout(() => resolve(Math.abs(jelly() - a) < 6), 800);
+        };
+        check();
+        setTimeout(() => resolve(false), 9000);
+      }),
+    null,
+    { timeout: 12000 }
+  );
   const resting = await jelly(page);
   expect(resting).toBeLessThan(10);
-  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        const jelly = () => Number(document.querySelector('.project-blob').dataset.jelly);
+        const a = jelly();
+        setTimeout(() => resolve(Math.abs(jelly() - a) < 6), 800);
+      }),
+    null,
+    { timeout: 8000 }
+  );
   expect(Math.abs((await jelly(page)) - resting)).toBeLessThan(6);
 });
