@@ -49,7 +49,7 @@
 /* Navbar header */
 
 .Navbar .header {
-    font-family: 'Outfit';
+    font-family: inherit;
     transition: all 0.5s;
 }
 

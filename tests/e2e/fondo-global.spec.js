@@ -36,7 +36,11 @@ test('fondo — canvas único anclado al hero (viaja con el scroll)', async ({
   expect(Math.abs(box.height - vp.height)).toBeLessThan(24);
   // Viaja con el hero al bajar (no queda clavado): sale del viewport.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () => document.querySelector('canvas.hero-canvas').getBoundingClientRect().top < 0,
+    null,
+    { timeout: 8000 }
+  );
   const boxAfter = await canvas.boundingBox();
   expect(boxAfter.y).toBeLessThan(0);
   expect(errors).toEqual([]);
@@ -47,9 +51,15 @@ test('fondo — footer visible al llegar abajo (regresión z-index)', async ({
 }) => {
   const { errors } = await gotoClean(page, '/');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(1000);
+  // toBeVisible ya espera por estado; el fade de entrada (throttle + CSS)
+  // se espera también por estado (opacidad 1), no por sleep fijo.
   const footer = page.locator('.Footer');
   await expect(footer).toBeVisible();
+  await page.waitForFunction(
+    () => getComputedStyle(document.querySelector('.Footer')).opacity === '1',
+    null,
+    { timeout: 8000 }
+  );
   expect(await footer.evaluate((el) => getComputedStyle(el).opacity)).toBe(
     '1'
   );
@@ -106,7 +116,23 @@ test('fondo — cierre inferior: arriba denso, abajo agotado', async ({
   const { errors } = await gotoClean(page, '/');
   const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
-  await page.waitForTimeout(2000);
+  // Espera a que el campo tenga píxeles medibles (denominador > 0),
+  // no un tiempo fijo de deriva.
+  await page.waitForFunction(
+    () => {
+      const c = document.querySelector('canvas.hero-canvas');
+      const x = c.getContext('2d');
+      const d = x.getImageData(0, 0, c.width, Math.floor(c.height * 0.4)).data;
+      let mx = 0;
+      for (let i = 0; i < d.length; i += 12) {
+        const m = Math.max(d[i], d[i + 1], d[i + 2]);
+        if (m > 0) mx = Math.max(mx, (m - Math.min(d[i], d[i + 1], d[i + 2])) / m);
+      }
+      return mx > 0;
+    },
+    null,
+    { timeout: 8000 }
+  );
   // Saturación media por franja (los cubos saturan, el fondo no): la
   // franja inferior debe estar claramente más vacía que la superior.
   // Umbral generoso: detecta ausencia del fade, no certifica la curva.
@@ -141,11 +167,15 @@ test('fondo — driver de fase por scroll (hero → contacto)', async ({
   const { errors } = await gotoClean(page, '/');
   const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => document.body.dataset.phase === 'hero', null, {
+    timeout: 8000,
+  });
   const top = await page.evaluate(() => document.body.dataset.phase);
   expect(top).toBe('hero');
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => document.body.dataset.phase === 'contacto', null, {
+    timeout: 8000,
+  });
   const bottom = await page.evaluate(() => document.body.dataset.phase);
   expect(bottom).toBe('contacto');
   expect(await canvas.getAttribute('data-phase')).toBe('contacto');
@@ -176,7 +206,16 @@ test('fondo — fase sobre-mí a mitad de scroll (ida y vuelta, scroll real)', a
   await expect(
     page.locator('section.section:nth-child(2) h1')
   ).toContainText('Sobre mí');
-  await page.waitForTimeout(1500); // la deriva asienta tras el scroll
+  // La deriva asienta tras el scroll: espera frames renderizados
+  // (30 rAF ≈ 500ms a 60fps, adaptativo bajo carga), no un sleep fijo.
+  await page.waitForFunction(() => new Promise((resolve) => {
+    let n = 0;
+    const f = () => {
+      if (++n >= 30) resolve(true);
+      else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
   const url = await canvas.evaluate((el) => el.toDataURL('image/png'));
   expect(url.length).toBeGreaterThan(1000);
   // Vuelta arriba: hero intacto, sin regresión.

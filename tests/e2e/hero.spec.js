@@ -55,12 +55,16 @@ test('2 — canvas global anclado al hero: existe, dimensionado, no intercepta',
   expect(Math.abs(box.y - heroBox.y)).toBeLessThan(2);
   expect(Math.abs(box.height - heroBox.height)).toBeLessThan(2);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () => document.querySelector('canvas.hero-canvas').getBoundingClientRect().top < 0,
+    null,
+    { timeout: 8000 }
+  );
   const boxAfter = await canvas.boundingBox();
   expect(boxAfter.y).toBeLessThan(0);
   // El canvas no intercepta: sobre el centro del H1 responde el H1.
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => window.scrollY === 0, null, { timeout: 8000 });
   const h1 = page.locator('section.hero h1');
   const hb = await h1.boundingBox();
   const hit = await page.evaluate(
@@ -173,13 +177,41 @@ test('8 — reduced-motion: composición estática visible, sin errores', async 
   await page.goto('/');
   const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
-  await page.waitForTimeout(1500);
-  // Frame estático: dos lecturas separadas 1.2s deben ser idénticas.
-  const shot = () =>
-    canvas.evaluate((el) => el.toDataURL('image/png'));
-  const a = await shot();
-  await page.waitForTimeout(1200);
-  const b = await shot();
+  // Frame estático: espera por estado (lienzo con contenido) y luego dos
+  // lecturas separadas por tiempo de página (no sleeps fijos en Node).
+  // Si un regen (p. ej. fonts) cae entre ambas, se reintenta: solo dos
+  // lecturas iguales y con contenido prueban estatismo.
+  await page.waitForFunction(
+    () => document.querySelector('canvas.hero-canvas').toDataURL('image/png').length > 1000,
+    null,
+    { timeout: 8000 }
+  );
+  // Frame estático: dos lecturas iguales separadas 1.2s (con reintentos
+  // ante regens de carga). El assert decide si nunca estabiliza.
+  const [a, b] = await page
+    .waitForFunction(
+      () =>
+        new Promise((resolve) => {
+          const shot = () =>
+            document.querySelector('canvas.hero-canvas').toDataURL('image/png');
+          let tries = 0;
+          const attempt = () => {
+            const x0 = shot();
+            setTimeout(() => {
+              const x1 = shot();
+              tries++;
+              if ((x0.length <= 1000 || x0 !== x1) && tries < 5) attempt();
+              else resolve([x0, x1]);
+            }, 1200);
+          };
+          attempt();
+        }),
+      null,
+      { timeout: 30000 }
+    )
+    .then((h) => h.jsonValue());
+  expect(a.length).toBeGreaterThan(1000);
+  expect(b).toBe(a);
   expect(a.length).toBeGreaterThan(1000);
   expect(b).toBe(a);
   await ctx.close();
@@ -189,7 +221,16 @@ test('8 — reduced-motion: composición estática visible, sin errores', async 
 test('9 — consola limpia durante 3s de animación', async ({ page }) => {
   const { errors } = await gotoClean(page, '/');
   await expect(page.locator('canvas.hero-canvas')).toBeVisible();
-  await page.waitForTimeout(3000);
+  // Ventana de animación por frames renderizados (≈3s a 60fps, adaptativa
+  // bajo carga), no por sleep fijo.
+  await page.waitForFunction(() => new Promise((resolve) => {
+    let n = 0;
+    const f = () => {
+      if (++n >= 180) resolve(true);
+      else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }));
   expect(errors).toEqual([]);
 });
 
@@ -197,6 +238,11 @@ test('10 — screenshot del hero como evidencia', async ({ page }, testInfo) => 
   await gotoClean(page, '/');
   const hero = page.locator('section.hero');
   await expect(hero).toBeVisible();
-  await page.waitForTimeout(2000);
+  // Lienzo con contenido + margen de frames antes de la captura.
+  await page.waitForFunction(
+    () => document.querySelector('canvas.hero-canvas').toDataURL('image/png').length > 1000,
+    null,
+    { timeout: 8000 }
+  );
   await hero.screenshot({ path: process.env.HERO_SHOT || testInfo.outputPath('hero.png') });
 });

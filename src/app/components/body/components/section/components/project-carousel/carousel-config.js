@@ -86,14 +86,21 @@ export const PHYS = {
  * objetivo (amplitudes/fases de los armónicos). Al cambiar la activa, la
  * forma morfea hacia la destino y el color transiciona a su acento (~0.8s,
  * como los tintes de referencia). Formas originales, no los paths del autor.
+ * Clave por slug (no por índice): el orden de CAROUSEL_ITEMS puede cambiar
+ * sin romper la identidad de cada proyecto.
  */
-export const BLOB_SHAPES = [
-  { amp1: 0.1, amp2: 0.05, sx: 1.0, sy: 1.0 }, // redonda base
-  { amp1: 0.06, amp2: 0.11, sx: 0.94, sy: 1.1 }, // pera vertical
-  { amp1: 0.13, amp2: 0.03, sx: 1.12, sy: 0.92 }, // apaisada
-  { amp1: 0.09, amp2: 0.08, sx: 1.02, sy: 1.04 }, // casi redonda viva
-  { amp1: 0.11, amp2: 0.09, sx: 0.96, sy: 1.06 }, // alta con hombros
-];
+export const BLOB_SHAPES = {
+  portfolio: { amp1: 0.1, amp2: 0.05, sx: 1.0, sy: 1.0 }, // redonda base
+  "sap-btp": { amp1: 0.06, amp2: 0.11, sx: 0.94, sy: 1.1 }, // pera vertical
+  "apps-js": { amp1: 0.13, amp2: 0.03, sx: 1.12, sy: 0.92 }, // apaisada
+  proximo: { amp1: 0.09, amp2: 0.08, sx: 1.02, sy: 1.04 }, // casi redonda viva
+  mundocloud: { amp1: 0.11, amp2: 0.09, sx: 0.96, sy: 1.06 }, // alta con hombros
+};
+
+// Forma del slug (fallback: la base, nunca undefined).
+export function blobShapeFor(slug) {
+  return { ...(BLOB_SHAPES[slug] || BLOB_SHAPES.portfolio) };
+}
 
 export const BLOB = {
   // Asentamiento exponencial ≈ tintes .8s de referencia (tuning propio).

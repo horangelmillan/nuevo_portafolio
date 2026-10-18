@@ -48,7 +48,15 @@ test('reveal — tenue al entrar y completo al centrar', async ({ page }) => {
     const r = p.getBoundingClientRect();
     window.scrollBy(0, r.top + r.height / 2 - targetY);
   }, vh * 1.0);
-  await page.waitForTimeout(400);
+  // Espera a que el IO+rAF aplique el progreso tenue (no sleep fijo).
+  await page.waitForFunction(
+    () => {
+      const spans = document.querySelectorAll('section.section:nth-child(2) .reveal-text [data-w]');
+      return spans.length > 0 && spans[0].style.opacity !== '';
+    },
+    null,
+    { timeout: 5000 }
+  );
   const dim = await page.evaluate(() => {
     const spans = document.querySelectorAll('section.section:nth-child(2) .reveal-text [data-w]');
     return [parseFloat(spans[0].style.opacity), parseFloat(spans[spans.length - 1].style.opacity)];

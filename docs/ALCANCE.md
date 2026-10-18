@@ -46,13 +46,12 @@ Deploy Vercel (importar repo, `pnpm build`, sin env vars) + Lighthouse
 
 ## Backlog transversal (no bloquea A5)
 - Outfit en una sola vía (`next/font/local` + `next/font/google` conviven).
-- `font-family:'Outfit'` hardcodeado en `nav.css`/`link.css` → `inherit`.
-- `div.Navbar` → `nav` (landmark).
-- Mapeo por índice frágil (mejor por id) en highlight y fases.
-- `waitForTimeout` → `waitForFunction` donde quede.
+- [x] `font-family:'Outfit'` hardcodeado en `nav.css`/`link.css` → `inherit` (backlog 2026-10-18, pendiente commit).
+- [x] `div.Navbar` → `nav` (landmark) (backlog 2026-10-18, pendiente commit).
+- [x] Mapeo por índice frágil (mejor por id) en highlight y fases (backlog 2026-10-18, pendiente commit).
+- [x] `waitForTimeout` → `waitForFunction` donde quede (backlog 2026-10-18: 34→0, pendiente commit).
+- [x] Nits reviewer: `split("|")` frágil → JSON, `io.observe` duplicado fuera, `dataset.k=0` inicial explícito, `data-settled="0"` honesto, `image/gallery` fuera de `cases.js` (backlog 2026-10-18, pendiente commit). Quedan: aria-live en tarjetas.
 - Auditoría dependencias dev-only (`js-yaml`, `brace-expansion` vía eslint).
-- Nits reviewer pendientes: aria-live en tarjetas, `split("|")` frágil,
-  `io.observe` duplicado, residuo `dataset.k=0` pre-colapso.
 - Validación manual auto-hide del header tras reiniciar `pnpm dev`.
 - Limpieza `test-results/` y temporales `Temp/opencode` al cerrar épico.
 

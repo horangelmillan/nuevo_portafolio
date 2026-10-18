@@ -21,7 +21,7 @@ li {
 }
 
 .Links button {
-    font-family: 'Outfit';
+    font-family: inherit;
     width: 100%;
     display: flex;
     background: none;

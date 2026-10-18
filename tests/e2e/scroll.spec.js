@@ -7,14 +7,36 @@ const { test, expect } = require('@playwright/test');
 test.setTimeout(90000);
 
 // Espera a que el scroll se asiente en la banda (luego un margen cubre el
-// lock de 800ms antes del siguiente gesto).
+// lock de 800ms antes del siguiente gesto): el margen es estabilidad
+// observada en la página (scrollY quieto 900ms), no un sleep fijo.
 async function settleBand(page, target, band = 80) {
   await page.waitForFunction(
     ([t, b]) => Math.abs(window.scrollY - t) < b,
     [target, band],
     { timeout: 8000 }
   );
-  await page.waitForTimeout(900);
+  await page.waitForFunction(
+    () =>
+      new Promise((resolve) => {
+        let last = window.scrollY;
+        let lastT = performance.now();
+        const f = (t) => {
+          const y = window.scrollY;
+          if (y !== last) {
+            last = y;
+            lastT = t;
+          } else if (t - lastT > 900) {
+            resolve(true);
+            return;
+          }
+          requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+        setTimeout(() => resolve(true), 10000);
+      }),
+    null,
+    { timeout: 15000 }
+  );
   const y = await page.evaluate(() => window.scrollY);
   expect(Math.abs(y - target)).toBeLessThan(band);
 }
@@ -40,8 +62,9 @@ test('snap — arriba vuelve y la ráfaga en lock no salta dos', async ({ page }
   await page.mouse.wheel(0, 300);
   await settleBand(page, vh);
   // Dos ruedas seguidas: la segunda cae en el lock → un solo salto.
+  // (Un frame entre ambas: siguen cayendo dentro del lock de 800ms.)
   await page.mouse.wheel(0, 300);
-  await page.waitForTimeout(100);
+  await page.waitForFunction(() => new Promise(requestAnimationFrame));
   await page.mouse.wheel(0, 300);
   await settleBand(page, vh * 2);
   // Tras asentarse, otra rueda sí avanza (a contacto = 3×vh).

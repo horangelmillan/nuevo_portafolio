@@ -14,12 +14,12 @@ export default function Nav() {
     const activeSection = useStore((s) => s.activeSection);
 
     return (
-        <div className={`Navbar ${isShowNavbar ? 'fadeIn' : 'fadeOut'}${activeSection === 0 ? ' on-hero' : ''}`}>
+        <nav className={`Navbar ${isShowNavbar ? 'fadeIn' : 'fadeOut'}${activeSection === 'hero' ? ' on-hero' : ''}`} aria-label="Navegación principal">
             <div className="Navbar-content">
                 <Logo size={"55px"} />
                 <Link /> 
             </div>
             <div className="border-bottom"></div>
-        </div>
+        </nav>
     );
 }
