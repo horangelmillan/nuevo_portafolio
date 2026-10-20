@@ -19,10 +19,10 @@ export const metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
-    title: "Horangel Millan Ramos | Desarrollador Full-Stack",
-    description:
-      "Portafolio de Horangel Millan Ramos: desarrollo Full-Stack, aplicaciones web e integraciones SAP BTP.",
+    card: "summary_large_image",
+            title: "Horangel Millan Ramos | Desarrollador Full-Stack",
+            description: "Portafolio de Horangel Millan Ramos: desarrollo Full-Stack, aplicaciones web e integraciones SAP BTP.",
+    images: ["/opengraph-image"],
   },
 };
 

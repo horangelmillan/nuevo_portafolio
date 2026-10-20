@@ -26,6 +26,26 @@
     z-index: 10;
 }
 
+.FooterContent {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.FooterContent img {
+    width: clamp(24px, 8vw, 34px);
+    height: auto;
+    flex: 0 0 auto;
+}
+
+.FooterContent p {
+    margin: 0;
+    font-size: clamp(0.6rem, 2.8vw, 1rem);
+    white-space: nowrap;
+}
+
 /* El `P` global (section.css #525252) y `*` (globals.css #000) pintan
    directo el <p> y anulaban el blanco heredado del .Footer. */
 .Footer p {

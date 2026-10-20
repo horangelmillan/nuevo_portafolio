@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" role="img" aria-labelledby="title">
+  <title id="title">Logo de Horangel Millan</title>
+  <defs>
+    <linearGradient id="grad1" x1="0" y1="100" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="9.876543%" stop-color="#000" />
+      <stop offset="100%" stop-color="#ff0101" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="75.867165" y1="-13" x2="0" y2="67.60124" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000" />
+      <stop offset="48.146294%" stop-color="#ef0000" />
+      <stop offset="100%" stop-color="#ff6200" />
+    </linearGradient>
+    <linearGradient id="grad3" x1="0" y1="100" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="9.876543%" stop-color="#000" />
+      <stop offset="100%" stop-color="#ff0101" />
+    </linearGradient>
+    <linearGradient id="grad4" x1="35.832115" y1="-18.499868" x2="0" y2="67.60124" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000" />
+      <stop offset="48.146294%" stop-color="#ef0000" />
+      <stop offset="100%" stop-color="#ff6200" />
+    </linearGradient>
+    <linearGradient id="grad5" x1="15.428572" y1="80.63249" x2="108" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#000" />
+      <stop offset="48.863636%" stop-color="#f00" />
+      <stop offset="100%" stop-color="#ff5900" />
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="140" height="140" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <g>
+      <path d="M.00009155 0 100 .110374 .110284 100 .00009155 0Z" fill="url(#grad1)" />
+      <path d="M0 .000061  .139035 100 20 80 20 20 81 20 101 .126229 0 .000061Z" fill="url(#grad2)" />
+    </g>
+    <g transform="matrix(-1.0000006 -.000002582223 .000002582223 -1.0000006 139.99976 140)">
+      <path d="M.00009155 0 100 .110374 .110284 100 .00009155 0Z" fill="url(#grad3)" />
+      <path d="M0 .000061  .139035 100 21.0822 79.0626 21.0821 19.2499 82.103 19.0985 101 .126229 0 .000061Z" fill="url(#grad4)" />
+    </g>
+    <path d="M14.9998 115 104.256 25.9999 123 25.9999 61.1301 88.3875 34.7383 115 14.9998 115Z" fill="url(#grad5)" />
+  </g>
+</svg>
