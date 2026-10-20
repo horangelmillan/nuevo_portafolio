@@ -7,11 +7,12 @@ const useTogleBurguerMenu = (refs) => {
     const isBurguerMenuOpen = useStore(state => state.isBurguerMenuOpen);
 
     useEffect(() => {
-            if (isBurguerMenuOpen) {
-                refs.current.setAttribute('class', 'Links show');
-            } else {
-                refs.current.setAttribute('class', 'Links hide');
-            }
+        // classList (no setAttribute): conserva las clases existentes
+        // (incluida la de la fuente Outfit de next/font) y solo alterna
+        // show/hide. setAttribute las borraba y la nav caía a serif.
+        if (!refs.current) return;
+        refs.current.classList.remove('show', 'hide');
+        refs.current.classList.add(isBurguerMenuOpen ? 'show' : 'hide');
     }, [pathname, isBurguerMenuOpen, refs]);
 
 };

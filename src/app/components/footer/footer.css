@@ -25,3 +25,10 @@
        z:1 de .body y lo taparían sin esto). Nav sigue por encima (9999). */
     z-index: 10;
 }
+
+/* El `P` global (section.css #525252) y `*` (globals.css #000) pintan
+   directo el <p> y anulaban el blanco heredado del .Footer. */
+.Footer p {
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(255, 255, 255, 0.45);
+}

@@ -66,7 +66,7 @@ test('fondo — footer visible al llegar abajo (regresión z-index)', async ({
   expect(Number(await footer.evaluate((el) => getComputedStyle(el).zIndex))).toBeGreaterThanOrEqual(
     10
   );
-  await expect(footer.locator('p')).toContainText('footer');
+  await expect(footer.locator('p')).toContainText('Gracias por llegar');
   // Sin nada tapándolo: el centro del footer responde el footer.
   const fb = await footer.boundingBox();
   const hit = await page.evaluate(
