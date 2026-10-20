@@ -332,7 +332,7 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       data-active-slug={items[0] ? items[0].slug : ""}
       role="region"
       aria-roledescription="carrusel"
-      aria-label="Proyectos destacados"
+      aria-label="Proyectos destacados. Arrastra, usa la rueda horizontal o las flechas."
       tabIndex={0}
     >
       <div ref={viewRef} className="carousel-view">

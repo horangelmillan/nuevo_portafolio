@@ -23,6 +23,10 @@ export const CAROUSEL_ITEMS = [
     title: "Portfolio",
     context: "Next.js 15 · React 19 · Canvas propio",
     status: "Este sitio — fondo generativo + carrusel",
+    // Encabezado de sección: etiqueta de tipo + descripción del proyecto
+    // enfocado. Solo contenido veraz presente en el repo.
+    kind: "Sitio web",
+    stack: "Next.js 15 · React 19 · Canvas propio",
     color: "#cf4409",
     slug: "portfolio",
   },
@@ -30,6 +34,10 @@ export const CAROUSEL_ITEMS = [
     title: "SAP BTP",
     context: "Integraciones cloud empresariales",
     status: "Consultoría — casos por publicar",
+    // Vacío honesto: el repo no lista tecnologías SAP concretas
+    // (actividad descrita en body.js, no stack afirmado).
+    kind: "Consultoría cloud",
+    stack: "Interfaces, servicios e integraciones",
     color: "#a4133c",
     slug: "sap-btp",
   },
@@ -37,6 +45,10 @@ export const CAROUSEL_ITEMS = [
     title: "Apps JS",
     context: "Empresarial · frontend moderno",
     status: "Mantenibles, con E2E",
+    // Vacío parcial: sin framework concreto confirmado en el repo
+    // (nivel actividad: ecosistema + frontend moderno).
+    kind: "Aplicación empresarial",
+    stack: "Ecosistema JavaScript · frontend moderno",
     color: "#e63946",
     slug: "apps-js",
   },
@@ -44,6 +56,8 @@ export const CAROUSEL_ITEMS = [
     title: "Próximo caso",
     context: "Demo + repo + métricas",
     status: "En preparación",
+    kind: "En preparación",
+    stack: "Demo + repo + métricas",
     color: "#b03a0e",
     slug: "proximo",
   },
@@ -51,6 +65,9 @@ export const CAROUSEL_ITEMS = [
     title: "MundoCloud",
     context: "Sitio corporativo · WordPress",
     status: "En línea desde 2026",
+    // Contenido real en cases.js (bloques Diseño/Operación).
+    kind: "Sitio corporativo",
+    stack: "WordPress a medida · HTML · formularios",
     color: "#3b4fe4",
     slug: "mundocloud",
   },
