@@ -85,9 +85,10 @@ test('3 — texto real como HTML, no dibujado en canvas', async ({ page }) => {
   await expect(hero.locator('h2')).toContainText('Full-Stack Developer');
   const desc = await hero.locator('p').innerText();
   expect(desc.length).toBeGreaterThan(20);
-  // Un único canvas global; ningún canvas dentro de secciones.
+  // Canvas global único + canvas propios designados (blob en proyectos,
+  // cubos en contacto); ningún otro canvas dentro de secciones.
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob):not(.contact-cubes)').count()).toBe(0);
   expect(await hero.locator('canvas h1, canvas p').count()).toBe(0);
   expect(errors).toEqual([]);
 });
@@ -106,7 +107,7 @@ test('5 — navbar visible, por encima del canvas e interactuable', async ({
   page,
 }) => {
   const { errors } = await gotoClean(page, '/');
-  const home = page.getByRole('button', { name: 'HOME' });
+  const home = page.getByRole('button', { name: 'INICIO' });
   // En móvil los enlaces viven tras el burger (el logo lo alterna).
   if (!(await home.isVisible())) {
     await page.locator('.Navbar-content svg').click();
@@ -124,7 +125,7 @@ test('5 — navbar visible, por encima del canvas e interactuable', async ({
     [navBox.x + 20, navBox.y + 20]
   );
   expect(hit).not.toContain('CANVAS');
-  // Click real sobre HOME (los botones no tienen navegación cableada:
+  // Click real sobre INICIO (los botones no tienen navegación cableada:
   // se verifica interacción sin errores, no un cambio de ruta inexistente).
   await home.evaluate((el) => el.click());
   await expect(page).toHaveURL(/\/$/);
@@ -135,7 +136,8 @@ test('6 — solo la primera sección es hero; canvas único global', async ({ pa
   const { errors } = await gotoClean(page, '/');
   expect(await page.locator('section.section').count()).toBe(4);
   expect(await page.locator('section.hero').count()).toBe(1);
-  expect(await page.locator('section.section canvas:not(.project-blob)').count()).toBe(0);
+  expect(await page.locator('section.section canvas:not(.project-blob):not(.contact-cubes)').count()).toBe(0);
+  expect(await page.locator('#contacto canvas.contact-cubes').count()).toBe(1);
   expect(await page.locator('.global-background canvas.hero-canvas').count()).toBe(1);
   expect(errors).toEqual([]);
 });

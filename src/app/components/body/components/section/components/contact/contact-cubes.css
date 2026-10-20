@@ -1,0 +1,24 @@
+/* Canvas propio de contacto: lado derecho, detrás de la card, sin clicks. */
+.contact-cubes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Velo DELANTE del canvas (después en el DOM, mismo z-index): los cubos
+   emergen desde detrás del borde derecho y el superior, en el tono exacto
+   del fondo de la sección. Banda sólida + fundido (sin corte visible).
+   Cero coste: sin animación. La card (z1) intacta. */
+.contact-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to left, rgba(233, 224, 207, 1) 0%, rgba(233, 224, 207, 1) 1%, rgba(233, 224, 207, 0) 20%),
+    linear-gradient(to bottom, rgba(233, 224, 207, 1) 0%, rgba(233, 224, 207, 1) 4%, rgba(233, 224, 207, 0) 20%);
+}

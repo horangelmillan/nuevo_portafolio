@@ -1,0 +1,59 @@
+/* Contacto v6 (Colorlib ContactForm v6 adaptada): compacta para caber en
+   100vh junto a los títulos. Solo-subrayado, pill terracota con flecha. */
+.contact-card {
+  position: relative;
+  background: #fff; border-radius: 20px;
+  padding: clamp(1rem, 2.4vw, 1.8rem) clamp(1.2rem, 3vw, 2.4rem);
+  box-shadow: 0 24px 60px -24px #00000040;
+  max-width: 56rem;
+  overflow: clip;
+}
+/* Presencia lateral: velo terracota que respira (CSS, sin canvas/loop).
+   Sutil por diseño; con reduced-motion queda fijo. */
+.contact-breath {
+  position: absolute; top: -20%; right: -12%;
+  width: 46%; height: 140%;
+  background: radial-gradient(ellipse 60% 50% at 60% 45%, #dd4e1126, transparent 70%);
+  animation: contact-breathe 8s ease-in-out infinite alternate;
+}
+@keyframes contact-breathe {
+  from { transform: translateX(-14px); opacity: .7; }
+  to { transform: translateX(14px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact-breath { animation: none; }
+}
+.contact-form { position: relative; display: grid; gap: .9rem; }
+.contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.contact-field { display: grid; gap: .1rem; }
+.contact-field > span { font-size: .85rem; color: #8a8a8a; }
+.contact-field input, .contact-field textarea {
+  border: 0; border-bottom: 1px solid #0000002e;
+  background: transparent; color: #1a1a1a;
+  font-size: 1.15rem; padding: .35rem 0 .5rem; width: 100%; border-radius: 0;
+}
+.contact-field textarea { resize: vertical; min-height: 3.4em; }
+.contact-field input:focus-visible, .contact-field textarea:focus-visible {
+  outline: none; border-bottom: 2px solid #dd4e11;
+}
+.contact-field input::placeholder, .contact-field textarea::placeholder { color: #1a1a1a; opacity: 1; }
+/* Honeypot: fuera de pantalla, nunca visible ni focuseable por teclado. */
+.contact-hp { position: absolute !important; left: -9999px !important; opacity: 0 !important; height: 0; width: 0; }
+.contact-submit {
+  justify-self: start; border: 0; cursor: pointer;
+  padding: .7rem 2.2rem; border-radius: 999px;
+  background: #dd4e11; color: #fff; font-size: 1.05rem; font-weight: 600;
+  box-shadow: 0 12px 28px -8px #dd4e11aa;
+}
+.contact-submit[disabled] { opacity: .6; cursor: wait; }
+.contact-status { min-height: 1.4em; margin: 0; }
+.contact-status[data-state="ok"] { color: #1a7a2e; }
+.contact-status[data-state="error"] { color: #b03a0e; }
+.contact-direct { position: relative; margin: .4rem 0 0; color: #8a8a8a; font-size: .95rem; }
+.contact-direct a { color: #dd4e11; text-underline-offset: 3px; }
+.contact-direct-copy {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: #dd4e11; font-size: inherit; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 640px) { .contact-row { grid-template-columns: 1fr; gap: .9rem; } }
