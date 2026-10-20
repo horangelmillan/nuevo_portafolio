@@ -96,20 +96,79 @@ export function jellyAt(j, theta) {
 }
 
 // Radio polar deformado SIN rotación (feedback 2026-10-11: el blob "giraba"
-// porque las fases viajaban con t): las fases son FIJAS globales; solo las
-// amplitudes morfean por proyecto y la respiración escala el conjunto.
-// p = { amp1 (3 lóbulos), amp2 (asimetría tipo pera), sx, sy (base elíptica) }.
-const PHASE1 = 1.2;
-const PHASE2 = 0.5;
+// porque las fases viajaban con t): las fases son FIJAS por forma; solo
+// morfean por proyecto (lerp en ProjectBlob) y la respiración escala.
+// p = { amp1 (3 lóbulos), ph1, amp2 (pera, 2 lóbulos), ph2,
+//       amp3 (rizado fino, 4 lóbulos), ph3, sx, sy (base elíptica) }.
+// Rangos visuales (ver BLOB_SHAPES en carousel-config.js):
+// amp1 0–0.18, amp2 0–0.16, amp3 0–0.08 (suma ≤0.30, si no se pinza),
+// ph* 0–6.28 (≥0.8 rad de diferencia ya se nota), sx/sy 0.85–1.25.
+export const SHAPE_DEFAULTS = {
+  amp1: 0.1,
+  ph1: 1.2,
+  amp2: 0.05,
+  ph2: 0.5,
+  amp3: 0,
+  ph3: 0.8,
+  sx: 1,
+  sy: 1,
+};
 
 export function blobRadius(theta, R, p, breath, jelly) {
+  const q = { ...SHAPE_DEFAULTS, ...p };
   const base =
     R *
     breath *
     (1 +
-      p.amp1 * Math.sin(3 * theta + PHASE1) +
-      p.amp2 * Math.sin(2 * theta + PHASE2));
+      q.amp1 * Math.sin(3 * theta + q.ph1) +
+      q.amp2 * Math.sin(2 * theta + q.ph2) +
+      q.amp3 * Math.sin(4 * theta + q.ph3));
   return jelly ? base + jelly(theta) : base;
+}
+
+// Extremos proyectados de la silueta SUAVE unitaria (sin R, sin breath, sin
+// gelatina): g(θ) = 1 + Σ ai·sin(fi·θ + φi); X = g·cosθ·sx, Y = g·sinθ·sy.
+// La gelatina NO se muestrea: entra por cota exacta J0 = max|off| (lineal a
+// trozos → el máximo está en los nudos) con |sinθ|,|cosθ| ≤ 1, así que J1 no
+// existe en este diseño. Estimación muestreada (N paramétrico): el error se
+// acota en vivo con Lipschitz (ver fórmula en ProjectBlob) usando el N real,
+// con Dd/A de las amplitudes vivas (las fases no entran: peor-caso sobre θ).
+export function extremesOf(p, n = 360) {
+  const q = { ...SHAPE_DEFAULTS, ...p };
+  const a1 = Math.abs(q.amp1);
+  const a2 = Math.abs(q.amp2);
+  const a3 = Math.abs(q.amp3);
+  let gd = 0;
+  let gu = 0;
+  let gs = 0;
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    const g =
+      1 +
+      q.amp1 * Math.sin(3 * t + q.ph1) +
+      q.amp2 * Math.sin(2 * t + q.ph2) +
+      q.amp3 * Math.sin(4 * t + q.ph3);
+    const yd = g * Math.sin(t) * q.sy;
+    const ys = Math.abs(g * Math.cos(t)) * q.sx;
+    if (yd > gd) gd = yd;
+    if (-yd > gu) gu = -yd;
+    if (ys > gs) gs = ys;
+  }
+  const A = a1 + a2 + a3;
+  const Dd = 3 * a1 + 2 * a2 + 4 * a3;
+  return { gd, gu, gs, A, Dd };
+}
+
+// Cota exacta de la deformación viva (px, sin escalar): el máximo del |offset|
+// sobre los nudos. Verificado por construcción, no por observación.
+export function jellyBound(jelly) {
+  if (!jelly || !jelly.off) return 0;
+  let m = 0;
+  for (let i = 0; i < jelly.off.length; i++) {
+    const a = Math.abs(jelly.off[i]);
+    if (a > m) m = a;
+  }
+  return m;
 }
 
 // Traza el blob como curva cerrada suave (cuadráticas por puntos medios).

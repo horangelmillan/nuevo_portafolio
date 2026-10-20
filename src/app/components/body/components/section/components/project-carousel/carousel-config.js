@@ -100,30 +100,62 @@ export const PHYS = {
 
 /*
  * Identidad orgánica por proyecto (A2): cada tarjeta tiene su propia forma
- * objetivo (amplitudes/fases de los armónicos). Al cambiar la activa, la
- * forma morfea hacia la destino y el color transiciona a su acento (~0.8s,
- * como los tintes de referencia). Formas originales, no los paths del autor.
- * Clave por slug (no por índice): el orden de CAROUSEL_ITEMS puede cambiar
- * sin romper la identidad de cada proyecto.
+ * objetivo. Al cambiar la activa, la forma morfea hacia la destino y el
+ * color transiciona a su acento (~0.8s, como los tintes de referencia).
+ * Formas originales, no los paths del autor. Clave por slug (no por índice):
+ * el orden de CAROUSEL_ITEMS puede cambiar sin romper la identidad.
+ *
+ * Cómo diseñar una silueta (solo este objeto, sin tocar el motor):
+ * - amp1 (0–0.18): 3 lóbulos principales. 0.06 suave, 0.14 muy lobulado.
+ * - ph1 (0–6.28): orientación de esos 3 lóbulos. Cambiar ≥0.8 ya se nota.
+ * - amp2 (0–0.16): asimetría tipo pera (2 lóbulos). ph2 la rota.
+ * - amp3 (0–0.08): rizado fino de 4 lóbulos (irregular/multilóbulo).
+ * - sx/sy (0.85–1.25): base elíptica (alargada / alta / redonda).
+ * - Regla: amp1+amp2+amp3 ≤ 0.30 (más se pinza la curva).
+ * - ph*: diferencias entre slugs ≥0.8 rad → orientaciones distintas.
  */
 export const BLOB_SHAPES = {
-  portfolio: { amp1: 0.1, amp2: 0.05, sx: 1.0, sy: 1.0 }, // redonda base
-  "sap-btp": { amp1: 0.06, amp2: 0.11, sx: 0.94, sy: 1.1 }, // pera vertical
-  "apps-js": { amp1: 0.13, amp2: 0.03, sx: 1.12, sy: 0.92 }, // apaisada
-  proximo: { amp1: 0.09, amp2: 0.08, sx: 1.02, sy: 1.04 }, // casi redonda viva
-  mundocloud: { amp1: 0.11, amp2: 0.09, sx: 0.96, sy: 1.06 }, // alta con hombros
+  portfolio: { amp1: 0.08, ph1: 1.2, amp2: 0.04, ph2: 0.5, amp3: 0, ph3: 0.8, sx: 1.0, sy: 1.0 }, // redonda base
+  "sap-btp": { amp1: 0.06, ph1: 1.2, amp2: 0.14, ph2: 2.1, amp3: 0.02, ph3: 0.8, sx: 0.88, sy: 1.18 }, // pera vertical alta
+  "apps-js": { amp1: 0.14, ph1: 0.2, amp2: 0.04, ph2: 0.5, amp3: 0.07, ph3: 2.4, sx: 1.22, sy: 0.84 }, // apaisada multilóbulo
+  proximo: { amp1: 0.1, ph1: 2.8, amp2: 0.1, ph2: 1.4, amp3: 0.08, ph3: 0.1, sx: 1.05, sy: 0.95 }, // irregular asimétrica
+  mundocloud: { amp1: 0.16, ph1: 1.9, amp2: 0.06, ph2: 0.5, amp3: 0.05, ph3: 1.1, sx: 0.94, sy: 1.12 }, // alta de hombros marcados
 };
 
-// Forma del slug (fallback: la base, nunca undefined).
+// Forma del slug (fallback: la base, nunca undefined; mezcla con defaults
+// para que una entrada parcial siga pintando sin pinzarse).
 export function blobShapeFor(slug) {
-  return { ...(BLOB_SHAPES[slug] || BLOB_SHAPES.portfolio) };
+  return { amp1: 0.08, ph1: 1.2, amp2: 0.04, ph2: 0.5, amp3: 0, ph3: 0.8, sx: 1, sy: 1, ...(BLOB_SHAPES[slug] || BLOB_SHAPES.portfolio) };
 }
+
+/*
+ * Ajuste dinámico de presencia (sin rMul manuales): cada frame se calcula la
+ * escala máxima segura desde la forma VIVA (ver fórmula en ProjectBlob):
+ * - target (gusto): techo estético, cuánto MÁS GRANDE queremos como máximo.
+ * - bodyMargin (física): px de cuerpo que deben quedar libres tras sumar el
+ *   error de muestreo en término propio (12 + err ⇒ margen real ≥ 12).
+ * - samples: N de extremesOf(); la cota de error usa este N real.
+ * El halo medido (~55–60px por lado, bbox α≥8 − bbox α≥128 en desktop+móvil)
+ * es solo telemetría para el gate visual, NO freno: a α<8/255 su corte es
+ * invisible sobre papel. BLOB_SHAPES no se toca: la identidad visual de cada
+ * forma (lóbulos, fases, proporción) es gusto; la seguridad deriva de ella.
+ */
+export const FIT = {
+  target: 1.15,
+  bodyMargin: 12,
+  samples: 360,
+};
 
 export const BLOB = {
   // Asentamiento exponencial ≈ tintes .8s de referencia (tuning propio).
   settleRate: 3.5,
   // Radio = lo que quepa (ancho ×0.30 y espacio libre sobre/bajo el ancla
-  // menos la sombra), acotado [minR, maxR]: nunca recorta en ningún viewport.
+  // menos la sombra), acotado [minR, maxR]: el min() garantiza que nunca
+  // recorta en ningún viewport (la sombra + 12px siempre caben en `free`).
+  // Medido 2026-10-20 (probe): desktop 1440 manda `free` (R=254, el techo
+  // maxR no ata) y móvil 390 manda el ancho (R=117, al límite sin recorte
+  // con sx=1). Subir el radio recortaría o sería no-op: la presencia extra
+  // viene de las siluetas (sx/sy por proyecto), no del radio.
   widthFrac: 0.3,
   minR: 80,
   maxR: 340,

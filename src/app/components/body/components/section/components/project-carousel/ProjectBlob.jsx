@@ -19,7 +19,7 @@
 
 import { useEffect, useRef } from "react";
 import useStore from "@/app/store/store";
-import { CAROUSEL_ITEMS, BLOB, blobShapeFor } from "./carousel-config";
+import { CAROUSEL_ITEMS, BLOB, FIT, blobShapeFor } from "./carousel-config";
 import { CASES } from "@/app/components/case/cases";
 import {
   hexToRgb,
@@ -31,10 +31,12 @@ import {
   createJelly,
   stepJelly,
   jellyAt,
+  extremesOf,
+  jellyBound,
 } from "./blob-physics";
 import "./project-blob.css";
 
-const ROUND = { amp1: 0.02, amp2: 0.01, sx: 1, sy: 1 };
+const ROUND = { amp1: 0.02, ph1: 1.2, amp2: 0.01, ph2: 0.5, amp3: 0, ph3: 0.8, sx: 1, sy: 1 };
 const MORPH_MS = 1000;
 const CLOSE_MS = 800;
 
@@ -55,6 +57,11 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     ax: 0,
     ay: 0,
     R: 100,
+    // Escala dinámica de presencia (ver computeSafe): suavizada + aplicada.
+    // Reff = R × scale es el radio que dibuja Y siente la gelatina.
+    scaleSm: 1,
+    scale: 1,
+    Reff: 100,
     color: hexToRgb(items[0].color),
     colorTgt: hexToRgb(items[0].color),
     shape: blobShapeFor(items[0].slug),
@@ -129,6 +136,36 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       );
     };
 
+    // Escala máxima SEGURA (dinámica, sin rMul manuales): extremos
+    // proyectados de la forma viva (solo silueta suave; la gelatina entra
+    // por cota exacta J0 y nunca se muestrea) + deriva rígida + margen
+    // corporal 12px, con el error de muestreo en término propio:
+    //   X:  s ≤ (halfW    − 12 − driftX − J0·sx) / (R·b·(ĝs + Lsx·π/N))
+    //   Y↓: s ≤ (freeDown − 12 − driftY − J0·sy) / (R·b·(ĝd + Lsy·π/N))
+    // (Y↑ análoga con freeUp; L = s_factor·(Dd+1+A), b = 1+breathAmp a pico,
+    // N = FIT.samples real.) Si s la cumple, el cuerpo real conserva ≥12px
+    // por construcción (valor medio: el máximo dista del muestreado ≤ L·π/N;
+    // lo suave escala con s; J0/deriva/12 son px rígidos sin escalar).
+    const computeSafe = (shape) => {
+      const { w, h } = sim;
+      if (!w || !h || sim.R <= 0) return 1;
+      const J0 = jellyBound(sim.jelly);
+      const e = extremesOf(shape, FIT.samples);
+      const b = 1 + BLOB.breathAmp;
+      const k = Math.PI / FIT.samples;
+      const sx = shape.sx ?? 1;
+      const sy = shape.sy ?? 1;
+      const Lx = sx * (e.Dd + 1 + e.A);
+      const Ly = sy * (e.Dd + 1 + e.A);
+      const m = FIT.bodyMargin;
+      const dx = BLOB.driftPx;
+      const dy = BLOB.driftPx * 0.6;
+      const sD = (h - sim.ay - m - dy - J0 * sy) / (sim.R * b * (e.gd + Ly * k));
+      const sS = (w / 2 - m - dx - J0 * sx) / (sim.R * b * (e.gs + Lx * k));
+      const sU = (sim.ay - m - dy - J0 * sy) / (sim.R * b * (e.gu + Ly * k));
+      return Math.min(sD, sS, sU);
+    };
+
     // Reparent ELIMINADO (modelo cortina): el canvas vive siempre en la
     // sección; solo cambian opacidad y forma. Se borra en vez de parchar.
     const blobPath = (cx, cy, R, shape, breath, jelly) => {
@@ -181,7 +218,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
           sim.pointer.vy,
           cx,
           cy,
-          sim.R,
+          sim.Reff,
           {
             freq: BLOB.jellyFreq,
             damp: BLOB.jellyDamp,
@@ -200,7 +237,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       const light = rgbCss(shadeRgb(sim.color, 52));
       const base = rgbCss(sim.color);
       const dark = rgbCss(shadeRgb(sim.color, -40));
-      const g = ctx.createLinearGradient(0, cy - sim.R, 0, cy + sim.R);
+      const g = ctx.createLinearGradient(0, cy - sim.Reff, 0, cy + sim.Reff);
       g.addColorStop(0, light);
       g.addColorStop(0.55, base);
       g.addColorStop(1, dark);
@@ -209,7 +246,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       ctx.shadowColor = base;
       ctx.shadowBlur = BLOB.shadowBlur;
       ctx.fillStyle = g;
-      blobPath(cx, cy, sim.R, sim.shape, breath, jellyFn);
+      blobPath(cx, cy, sim.Reff, sim.shape, breath, jellyFn);
       ctx.fill();
       ctx.restore();
     };
@@ -230,7 +267,11 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       const R = sim.p0.R + (sim.p1.R - sim.p0.R) * k;
       const shape = {
         amp1: sim.p0.shape.amp1 + (sim.p1.shape.amp1 - sim.p0.shape.amp1) * k,
+        ph1: sim.p0.shape.ph1 + (sim.p1.shape.ph1 - sim.p0.shape.ph1) * k,
         amp2: sim.p0.shape.amp2 + (sim.p1.shape.amp2 - sim.p0.shape.amp2) * k,
+        ph2: sim.p0.shape.ph2 + (sim.p1.shape.ph2 - sim.p0.shape.ph2) * k,
+        amp3: sim.p0.shape.amp3 + (sim.p1.shape.amp3 - sim.p0.shape.amp3) * k,
+        ph3: sim.p0.shape.ph3 + (sim.p1.shape.ph3 - sim.p0.shape.ph3) * k,
         sx: sim.p0.shape.sx + (sim.p1.shape.sx - sim.p0.shape.sx) * k,
         sy: sim.p0.shape.sy + (sim.p1.shape.sy - sim.p0.shape.sy) * k,
       };
@@ -261,9 +302,18 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       if (!sim.mode) {
         const f = 1 - Math.exp(-BLOB.settleRate * dt);
         sim.color = lerp3(sim.color, sim.colorTgt, f);
-        for (const key of ["amp1", "amp2", "sx", "sy"]) {
+        for (const key of ["amp1", "ph1", "amp2", "ph2", "amp3", "ph3", "sx", "sy"]) {
           sim.shape[key] += (sim.shapeTgt[key] - sim.shape[key]) * f;
         }
+        // Escala segura sobre la forma VIVA (el morph intermedio queda
+        // cubierto por construcción): meta suavizada + tope instantáneo.
+        const safeNow = computeSafe(sim.shape);
+        sim.scaleSm += (Math.min(FIT.target, safeNow) - sim.scaleSm) * f;
+        let sc = Math.min(sim.scaleSm, safeNow);
+        if (!Number.isFinite(sc)) sc = 1;
+        sim.scale = Math.max(0.5, sc);
+        canvas.dataset.fit = sim.scale.toFixed(3);
+        sim.Reff = sim.R * sim.scale;
         sim.frameDt = dt;
         drawAmbient(t);
         if (sim.reduced || !sim.visible || document.hidden) {
@@ -290,8 +340,12 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       // cubierto→tarjeta (contracción). El `1-ease` anterior invertía el
       // cierre (iba de tarjeta a pantalla: expansión).
       const k = easeCircInOut(tt);
-      // Continua desde 0 (sin salto respecto al cubierto transparente).
-      const alpha = sim.mode === "expanding" ? 1 - k : Math.min(1, tt * 4);
+      // Continua desde 0 (sin salto respecto al cubierto transparente) y con
+      // el MISMO alfa del reposo (fillAlpha): el morph nace y aterriza
+      // exactamente sobre el frame ambiental, sin pop de brillo de 1 frame
+      // que el muestreo E2E leía como bache de 12px en la monotonía.
+      const alpha =
+        sim.mode === "expanding" ? (1 - k) * BLOB.fillAlpha : Math.min(1, tt * 4) * BLOB.fillAlpha;
       drawMorph(k, alpha);
       canvas.dataset.color = sim.caseHex;
       // Hook de test (mismo patrón que dataset.color): el E2E afirma
@@ -323,7 +377,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.p0 = {
         x: sim.ax,
         y: sim.ay,
-        R: sim.R,
+        R: sim.R * (sim.scale || 1),
         shape: { ...sim.shape },
         color: [...sim.color],
       };
@@ -365,7 +419,7 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.p1 = {
         x: c.left - kr.left + c.width / 2,
         y: c.top - kr.top + c.height / 2,
-        R: sim.R,
+        R: sim.R * (sim.scale || 1),
         shape: { ...sim.shape },
         color: [...sim.color],
       };
@@ -389,6 +443,11 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       if (sim.reduced) {
         sim.color = [...sim.colorTgt];
         sim.shape = { ...sim.shapeTgt };
+        const safeNow = computeSafe(sim.shape);
+        sim.scaleSm = Math.min(FIT.target, safeNow);
+        sim.scale = Math.max(0.5, sim.scaleSm);
+        canvas.dataset.fit = sim.scale.toFixed(3);
+        sim.Reff = sim.R * sim.scale;
         drawAmbient(0.6);
         return;
       }
@@ -455,8 +514,15 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
         ensureLoop();
       } else {
         resizeSection();
-        if (sim.reduced) drawAmbient(0.6);
-        else ensureLoop();
+        // Al re-medir, la escala solo puede BAJAR de golpe (nunca exceder el
+        // nuevo límite); el crecimiento vuelve suave por el loop.
+        sim.scaleSm = Math.min(sim.scaleSm, Math.min(FIT.target, computeSafe(sim.shape)));
+        if (sim.reduced) {
+          sim.scale = Math.max(0.5, sim.scaleSm);
+          canvas.dataset.fit = sim.scale.toFixed(3);
+          sim.Reff = sim.R * sim.scale;
+          drawAmbient(0.6);
+        } else ensureLoop();
       }
     };
     // Attach SIEMPRE con su cleanup (StrictMode invoca el efecto 2 veces en
@@ -477,8 +543,14 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
       sim.init = true;
       resizeSection();
       canvas.dataset.color = items[0].color;
-      if (sim.reduced) drawAmbient(0.6);
-      else ensureLoop();
+      if (sim.reduced) {
+        const safeNow = computeSafe(sim.shape);
+        sim.scaleSm = Math.min(FIT.target, safeNow);
+        sim.scale = Math.max(0.5, sim.scaleSm);
+        canvas.dataset.fit = sim.scale.toFixed(3);
+        sim.Reff = sim.R * sim.scale;
+        drawAmbient(0.6);
+      } else ensureLoop();
     }
     const mode = caseView?.mode || null;
     if (mode === "expand" && sim.mode !== "expanding" && sim.mode !== "covering") {
@@ -521,5 +593,5 @@ export default function ProjectBlob({ items = CAROUSEL_ITEMS }) {
     };
   });
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} data-jelly="0" data-k="0.000" />;
+  return <canvas ref={canvasRef} aria-hidden="true" className="project-blob" data-color={items[0].color} data-jelly="0" data-k="0.000" data-fit="1.000" />;
 }
