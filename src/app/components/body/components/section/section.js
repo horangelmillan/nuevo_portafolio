@@ -1,6 +1,7 @@
 import "./section.css";
 import { outfit, cinzel } from "../../../../fonts";
 import ProjectCarousel from "./components/project-carousel/ProjectCarousel";
+import ProjectHeader from "./components/project-carousel/ProjectHeader";
 import RevealText from "./components/reveal-text/RevealText";
 import ProjectBlob from "./components/project-carousel/ProjectBlob";
 import ContactBlock from "./components/contact/ContactBlock";
@@ -24,22 +25,32 @@ export default function Section({ id = null, sectionType = "plain", title, subti
       {/* Contenido placeholder - REEMPLAZAR con tu información real */}
       <div className={"section-content"}>
         <h1 className={outfit.className}>{title}</h1>
-        {subtitle ? <h2 className={cinzel.className}>{subtitle}</h2> : null}
-        {reveal ? (
-          <>
-            <RevealText text={revealMain} accents={revealAccents} links={revealLinks} className={outfit.className} />
-            {revealRest.map((t, i) => (
-              <p key={i} className={`reveal-closing ${outfit.className}`}>
-                {t}
-              </p>
-            ))}
-          </>
-        ) : id === "contacto" ? (
-          <ContactBlock />
+        {/* Proyectos: el h1 queda fijo; la etiqueta (h2) y la descripción
+            (p) las publica la isla cliente según el proyecto enfocado en
+            el carrusel (data-active-slug al cambiar el índice activo).
+            El resto de secciones conserva su subtítulo/contenido. */}
+        {carouselItems ? (
+          <ProjectHeader items={carouselItems} />
         ) : (
-          <p className={outfit.className}>
-            {content}
-          </p>
+          <>
+            {subtitle ? <h2 className={cinzel.className}>{subtitle}</h2> : null}
+            {reveal ? (
+              <>
+                <RevealText text={revealMain} accents={revealAccents} links={revealLinks} className={outfit.className} />
+                {revealRest.map((t, i) => (
+                  <p key={i} className={`reveal-closing ${outfit.className}`}>
+                    {t}
+                  </p>
+                ))}
+              </>
+            ) : id === "contacto" ? (
+              <ContactBlock />
+            ) : (
+              <p className={outfit.className}>
+                {content}
+              </p>
+            )}
+          </>
         )}
         {carouselItems && <ProjectCarousel items={carouselItems} />}
       </div>
