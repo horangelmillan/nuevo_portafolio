@@ -293,9 +293,11 @@ test('caso — tap en activa expande sin cambiar de URL', async ({ page }) => {
   const full = await readTraj(page);
   expect(full.some((s) => s.k >= 1)).toBe(true);
   for (let i = 1; i < seen.length; i++) {
-    // Tolerancia ±8 (como el cierre): el borde antialiaseado sobre lienzo
-    // transparente cuantiza en la rejilla de muestreo (paso 6px).
-    expect(seen[i].w).toBeGreaterThanOrEqual(seen[i - 1].w - 8);
+    // Tolerancia ±12 = 2 pasos de rejilla (paso 6px): ambos bordes pueden
+    // parpadear de columna a la vez; la geometría crece monótona por
+    // construcción (R y forma interpolan). Con dirección invertida el
+    // desvío es de cientos de px: sigue cazándolo.
+    expect(seen[i].w).toBeGreaterThanOrEqual(seen[i - 1].w - 12);
   }
   // Sin redirección: seguimos en home.
   await expect(page).toHaveURL(/\/$/);
@@ -415,9 +417,11 @@ test('caso cierre — el blob encoje desde el 100% sin volver a crecer', async (
   expect(curve.length).toBeGreaterThan(3);
   // Empieza cubriendo (ancho de viewport) y termina sustancialmente
   // más pequeño (px absolutos, no ratio: en tablet el blob base ya es
-  // grande y el ratio falseaba)…
+  // grande y el ratio falseaba; tras la presencia dinámica el ambiente
+  // móvil es mayor y el delta baja a ~70-90: >60 sigue siendo sustancial
+  // y con dirección invertida el delta es <=0, así que sigue cazando el bug)…
   expect(curve[0].w).toBeGreaterThan(vw * 0.6);
-  expect(curve[0].w - curve[curve.length - 1].w).toBeGreaterThan(100);
+  expect(curve[0].w - curve[curve.length - 1].w).toBeGreaterThan(60);
   // …sin re-crecer en el camino, mientras k sube 0→1 (la relación k↔tamaño
   // es la prueba de dirección: con extremos invertidos, k↑ era expansión).
   for (let i = 1; i < curve.length; i++) {
