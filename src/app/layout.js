@@ -1,4 +1,5 @@
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "Horangel Millan — Full-Stack Developer | SAP BTP",
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body >
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
