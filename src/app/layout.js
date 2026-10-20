@@ -1,12 +1,18 @@
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
-  title: "Horangel Millan — Full-Stack Developer | SAP BTP",
-  description: "Portfolio de Horangel Millan: Next.js, React, arquitecturas cloud e integraciones SAP BTP.",
   metadataBase: new URL("https://horangelmillan.dev"),
+  title: "Horangel Millan Ramos | Desarrollador Full-Stack",
+  description:
+    "Portafolio de Horangel Millan Ramos, desarrollador Full-Stack y consultor SAP BTP. Desarrollo aplicaciones web, integraciones cloud y soluciones empresariales.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Horangel Millan — Full-Stack Developer | SAP BTP",
-    description: "Portfolio de Horangel Millan: Next.js, React, arquitecturas cloud e integraciones SAP BTP.",
+    title: "Horangel Millan Ramos | Desarrollador Full-Stack",
+    description:
+      "Portafolio de Horangel Millan Ramos: desarrollo Full-Stack, aplicaciones web e integraciones SAP BTP.",
     url: "https://horangelmillan.dev",
     siteName: "Horangel Millan",
     locale: "es_CO",
@@ -14,8 +20,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Horangel Millan — Full-Stack Developer | SAP BTP",
-    description: "Portfolio de Horangel Millan: Next.js, React, arquitecturas cloud e integraciones SAP BTP.",
+            title: "Horangel Millan Ramos | Desarrollador Full-Stack",
+            description: "Portafolio de Horangel Millan Ramos: desarrollo Full-Stack, aplicaciones web e integraciones SAP BTP.",
     images: ["/opengraph-image"],
   },
 };
@@ -25,6 +31,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body >
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
