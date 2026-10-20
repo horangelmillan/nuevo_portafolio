@@ -65,9 +65,27 @@ test('carrusel — renderiza 5 tarjetas, flechas y estado inicial', async ({ pag
   // determinista en todos los viewports) y la anterior nace deshabilitada.
   expect(idx).toBe(0);
   await expect(page.locator('.carousel-ctrl.left')).toBeDisabled();
-  // Sin canvas ajeno: el gate `section canvas = 0` sigue valiendo para todo
-  // lo que no sea el blob intencional (.project-blob, A2).
-  expect(await page.locator('section.section canvas:not(.project-blob)').count()).toBe(0);
+  // Sin canvas ajeno: solo valen los intencionales (.project-blob en
+  // proyectos, .contact-cubes en contacto).
+  expect(await page.locator('section.section canvas:not(.project-blob):not(.contact-cubes)').count()).toBe(0);
+  // Formato de sección por roles: título Outfit negro (h1), descripción
+  // Cinzel terracota (h2), párrafo Outfit gris (p). Fija fuente+color.
+  // (next/font genera la familia en minúsculas: comparación insensible.)
+  const typo = await page.evaluate(() => {
+    const card = document.querySelector('.carousel-card');
+    const css = (sel) => getComputedStyle(card.querySelector(sel));
+    return {
+      title: [css('h3').fontFamily.toLowerCase(), css('h3').color],
+      context: [css('.carousel-context').fontFamily.toLowerCase(), css('.carousel-context').color],
+      status: [css('.carousel-status').fontFamily.toLowerCase(), css('.carousel-status').color],
+    };
+  });
+  expect(typo.title[0]).toContain('outfit');
+  expect(typo.title[1]).toBe('rgb(0, 0, 0)');
+  expect(typo.context[0]).toContain('cinzel');
+  expect(typo.context[1]).toBe('rgb(221, 78, 17)');
+  expect(typo.status[0]).toContain('outfit');
+  expect(typo.status[1]).toBe('rgb(82, 82, 82)');
   // Fade en bordes: las tarjetas se desvanecen, no se cortan en duro.
   const mask = await page.locator('.carousel-view').evaluate((el) => getComputedStyle(el).maskImage);
   expect(mask).toContain('linear-gradient');

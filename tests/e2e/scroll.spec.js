@@ -70,7 +70,11 @@ test('snap — arriba vuelve y la ráfaga en lock no salta dos', async ({ page }
   // Tras asentarse, otra rueda sí avanza (a contacto = 3×vh).
   await page.mouse.wheel(0, 300);
   await settleBand(page, vh * 3);
+  // Al fondo de la página el footer fijo aparece.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(page.locator('.Footer.fadeInFooter')).toBeVisible({ timeout: 8000 });
   // Y hacia arriba vuelve una por una.
+  await page.evaluate((y) => window.scrollTo(0, y), vh * 3);
   await page.mouse.wheel(0, -300);
   await settleBand(page, vh * 2);
 });

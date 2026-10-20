@@ -14,6 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import useStore from "@/app/store/store";
+import { outfit, cinzel } from "@/app/fonts";
 import { CAROUSEL_ITEMS, PHYS } from "./carousel-config";
 import {
   clamp,
@@ -353,9 +354,12 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
               }}
             >
               <span className="carousel-accent" aria-hidden="true" />
-              <h3>{it.title}</h3>
-              <p className="carousel-context">{it.context}</p>
-              <p className="carousel-status">{it.status}</p>
+              {/* Formato de sección: título Outfit negro (h1), descripción
+                  Cinzel terracota (h2), párrafo Outfit gris (p). Escala
+                  adaptada a la tarjeta; el rol lo marca la fuente+color. */}
+              <h3 className={outfit.className}>{it.title}</h3>
+              <p className={`carousel-context ${cinzel.className}`}>{it.context}</p>
+              <p className={`carousel-status ${outfit.className}`}>{it.status}</p>
             </li>
           ))}
           <li className="carousel-spacer" aria-hidden="true" />

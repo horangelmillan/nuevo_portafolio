@@ -78,15 +78,19 @@
     outline-offset: 2px;
 }
 
+/* Descripción = subtítulo de sección (h2: Cinzel terracotta, vía className).
+   Escala adaptada a la tarjeta (el h2 de página minima 1.5rem, excesivo
+   en 320px): mismo rol, menor cuerpo. */
 .carousel-context {
-    color: #525252;
-    font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+    color: #dd4e11;
+    font-size: clamp(1rem, 1.8vw, 1.25rem);
     margin: 0 0 0.5rem;
 }
 
+/* Párrafo = texto de sección (p: Outfit gris, vía className). */
 .carousel-status {
-    color: #cf4409;
-    font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+    color: #525252;
+    font-size: clamp(0.95rem, 1.6vw, 1.1rem);
     margin: 0;
 }
 

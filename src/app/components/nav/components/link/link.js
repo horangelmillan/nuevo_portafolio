@@ -40,10 +40,10 @@ const Link = () => {
 
     return (
         <ul className={`${outfitFont.className} Links`} ref={refLinks}>
-            <li><button ref={ref1} type="button" data-link="/" onClick={() => scrollToSection('hero')} ><span>HOME</span><div></div></button></li>
-            <li><button ref={ref2} type="button" data-link="/me" onClick={openAbout} aria-haspopup="dialog"><span>ABOUT</span><div></div></button></li>
-            <li><button ref={ref3} type="button" data-link="/projects" onClick={() => scrollToSection('proyectos')} ><span>WORK</span><div></div></button></li>
-            <li><button ref={ref4} type="button" data-link="/contact" onClick={() => scrollToSection('contacto')} ><span>CONTACT</span><div></div></button></li>
+            <li><button ref={ref1} type="button" data-link="/" onClick={() => scrollToSection('hero')} ><span>INICIO</span><div></div></button></li>
+            <li><button ref={ref2} type="button" data-link="/me" onClick={openAbout} aria-haspopup="dialog"><span>SOBRE MÍ</span><div></div></button></li>
+            <li><button ref={ref3} type="button" data-link="/projects" onClick={() => scrollToSection('proyectos')} ><span>PROYECTOS</span><div></div></button></li>
+            <li><button ref={ref4} type="button" data-link="/contact" onClick={() => scrollToSection('contacto')} ><span>CONTACTO</span><div></div></button></li>
         </ul>
     );
 };

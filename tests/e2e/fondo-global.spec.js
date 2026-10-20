@@ -24,7 +24,7 @@ test('fondo — canvas único anclado al hero (viaja con el scroll)', async ({
   const canvas = page.locator('canvas.hero-canvas');
   await expect(canvas).toBeVisible();
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob):not(.contact-cubes)').count()).toBe(0);
   const pos = await page.evaluate(() => {
     const g = document.querySelector('.global-background');
     return g ? getComputedStyle(g).position : null;
@@ -105,8 +105,10 @@ test('fondo — hero transparente; siguientes secciones opacas y limpias', async
     }
   }
   // El canvas global sigue existiendo una sola vez, detrás del contenido.
+  // (Los canvas propios designados —blob y cubos de contacto— viven dentro
+  // de su sección, no son fondo global.)
   expect(await page.locator('canvas.hero-canvas').count()).toBe(1);
-  expect(await page.locator('section canvas:not(.project-blob)').count()).toBe(0);
+  expect(await page.locator('section canvas:not(.project-blob):not(.contact-cubes)').count()).toBe(0);
   expect(errors).toEqual([]);
 });
 

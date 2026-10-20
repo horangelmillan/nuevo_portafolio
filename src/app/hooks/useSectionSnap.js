@@ -62,6 +62,7 @@ export default function useSectionSnap() {
       if (now < st.current.lockUntil) return;
       const { best, count } = nearestIdx();
       const next = Math.max(0, Math.min(count - 1, best + dir));
+      if (next === best) return;
       const y = centerY(next);
       if (y === null) return;
       st.current.acc = 0;

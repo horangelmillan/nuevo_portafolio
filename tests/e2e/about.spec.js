@@ -14,7 +14,7 @@ async function gotoBooted(page) {
 // vacía: Playwright lo ve "visible" aunque no se puede clickar. Se fuerza
 // apertura por posición real en viewport, no por isVisible().
 async function openAbout(page) {
-  const about = page.getByRole('button', { name: 'ABOUT' });
+  const about = page.getByRole('button', { name: 'SOBRE MÍ' });
   const inViewport = await about.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth;
@@ -36,7 +36,7 @@ async function openAbout(page) {
   await expect(page.locator('.about-overlay.open')).toBeVisible();
 }
 
-test('about — ABOUT abre el panel con rol dialog', async ({ page }) => {
+test('about — SOBRE MÍ abre el panel con rol dialog', async ({ page }) => {
   await gotoBooted(page);
   await openAbout(page);
   await expect(page.getByRole('dialog', { name: 'Sobre mí' })).toBeVisible();
@@ -80,8 +80,8 @@ test('about — copiar email deja "Copiado" y el portapapeles', async ({ page, c
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await gotoBooted(page);
   await openAbout(page);
-  await page.getByRole('button', { name: 'Copiar email' }).click();
-  await expect(page.getByRole('button', { name: 'Copiado' })).toBeVisible();
+  await page.locator('.about-panel').getByRole('button', { name: 'Copiar email' }).click();
+  await expect(page.locator('.about-panel').getByRole('button', { name: 'Copiado' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     await page.evaluate(() => document.querySelector('.about-mail').textContent)
   );
