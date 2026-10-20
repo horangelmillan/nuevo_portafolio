@@ -52,7 +52,8 @@ export default function ContactBlock() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (sending) return;
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     // Honeypot Web3Forms: bots lo rellenan, humanos no.
     if (fd.get("botcheck")) return;
     // Time-trap: un humano tarda >3s desde que ve el form.
@@ -86,7 +87,7 @@ export default function ContactBlock() {
       const data = await res.json().catch(() => ({}));
       if (data.success) {
         setStatus({ state: "ok", msg: "Mensaje enviado. Gracias por escribir." });
-        e.currentTarget.reset();
+        form.reset();
       } else {
         setStatus({ state: "error", msg: "No se pudo enviar. Prueba por email directo." });
       }
