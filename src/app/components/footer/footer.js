@@ -9,7 +9,7 @@ export default function Footer() {
 
     return(
         <div className={`Footer ${isShowFooter ? 'fadeInFooter' : 'fadeOutFooter'}`}>
-            <p>Esto es un footer</p>
+            <p>© 2026 Horangel Millan Ramos — Gracias por llegar hasta aquí.</p>
         </div>
     )
 }
