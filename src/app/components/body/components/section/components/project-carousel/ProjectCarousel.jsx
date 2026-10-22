@@ -338,28 +338,37 @@ export default function ProjectCarousel({ items = CAROUSEL_ITEMS }) {
       <div ref={viewRef} className="carousel-view">
         <ul ref={trackRef} className="carousel-track" data-offset="0" data-settled="0">
           {items.map((it, i) => (
+            // Semántica nativa (a11y): el li es solo item de lista; el
+            // interactivo es un botón nativo superpuesto a la tarjeta cuyo
+            // nombre sale del texto visible vía aria-labelledby (título +
+            // contexto + estado). El botón NO envuelve los h3/p porque su
+            // modelo de contenido solo admite phrasing content; así se
+            // conservan los encabezados y no hay texto duplicado.
+            // Enter/Espacio los dispara el botón nativo (click con
+            // e.detail === 0); el tap de puntero lo sigue resolviendo onUp
+            // por geometría (el capture reorienta el up a la vista, así que
+            // el click nativo no duplica la apertura).
             <li
               key={it.title}
               className="carousel-card"
               data-index={i}
               style={{ "--accent": it.color }}
-              role="button"
-              tabIndex={0}
-              aria-label={`Abrir caso: ${it.title}`}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  selectRef.current(i);
-                }
-              }}
             >
               <span className="carousel-accent" aria-hidden="true" />
               {/* Formato de sección: título Outfit negro (h1), descripción
                   Cinzel terracota (h2), párrafo Outfit gris (p). Escala
                   adaptada a la tarjeta; el rol lo marca la fuente+color. */}
-              <h3 className={outfit.className}>{it.title}</h3>
-              <p className={`carousel-context ${cinzel.className}`}>{it.context}</p>
-              <p className={`carousel-status ${outfit.className}`}>{it.status}</p>
+              <h3 id={`cc-title-${it.slug}`} className={outfit.className}>{it.title}</h3>
+              <p id={`cc-context-${it.slug}`} className={`carousel-context ${cinzel.className}`}>{it.context}</p>
+              <p id={`cc-status-${it.slug}`} className={`carousel-status ${outfit.className}`}>{it.status}</p>
+              <button
+                type="button"
+                className="carousel-card-btn"
+                aria-labelledby={`cc-title-${it.slug} cc-context-${it.slug} cc-status-${it.slug}`}
+                onClick={(e) => {
+                  if (e.detail === 0) selectRef.current(i);
+                }}
+              />
             </li>
           ))}
           <li className="carousel-spacer" aria-hidden="true" />

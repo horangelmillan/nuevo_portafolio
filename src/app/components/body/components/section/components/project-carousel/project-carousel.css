@@ -51,6 +51,7 @@
 }
 
 .carousel-card {
+    position: relative;
     flex: 0 0 auto;
     width: min(320px, 78vw);
     background: rgba(250, 245, 236, 0.92);
@@ -73,7 +74,26 @@
     cursor: pointer;
 }
 
-.carousel-card:focus-visible {
+/* Botón nativo superpuesto a cada tarjeta (a11y): el li conserva todo lo
+   visual (fondo/borde/padding/sombra/transform); el botón es un velo
+   transparente a caja completa que porta el nombre accesible vía
+   aria-labelledby. No envuelve el texto porque button solo admite
+   phrasing content (sin h3/p dentro). cursor heredado: conserva grab
+   de la vista y pointer solo en la activa. */
+.carousel-card-btn {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: inherit;
+}
+
+.carousel-card-btn:focus-visible {
     outline: 2px solid #cf4409;
     outline-offset: 2px;
 }
