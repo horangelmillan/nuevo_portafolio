@@ -91,6 +91,53 @@ test('carrusel — renderiza 5 tarjetas, flechas y estado inicial', async ({ pag
   expect(mask).toContain('linear-gradient');
 });
 
+test('carrusel — semántica nativa: li puros y botón con nombre visible', async ({ page }) => {
+  await gotoProyectos(page);
+  // La pista solo tiene li (5 tarjetas + el espaciador final real).
+  const tags = await page.evaluate(() =>
+    Array.from(document.querySelector('.carousel-track').children).map((el) => el.tagName)
+  );
+  expect(tags).toEqual(['LI', 'LI', 'LI', 'LI', 'LI', 'LI']);
+  // Sin roles ni nombres que rompan la lista: el interactivo es un botón
+  // nativo por tarjeta cuyo nombre sale del texto visible vía
+  // aria-labelledby (título+contexto+estado). El botón no envuelve los
+  // h3/p (su modelo de contenido solo admite phrasing content).
+  const cardAttrs = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.carousel-card')).map((el) => ({
+      role: el.getAttribute('role'),
+      tab: el.getAttribute('tabindex'),
+      label: el.getAttribute('aria-label'),
+    }))
+  );
+  expect(cardAttrs).toHaveLength(5);
+  for (const a of cardAttrs) {
+    expect(a).toEqual({ role: null, tab: null, label: null });
+  }
+  await expect(page.locator('.carousel-card > button.carousel-card-btn')).toHaveCount(5);
+  const btnStruct = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.carousel-card > button')).map((b) => {
+      const ids = (b.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+      return {
+        ids,
+        invalidDescendants: b.querySelectorAll('h1,h2,h3,h4,h5,h6,p,div,ul,ol,li').length,
+        named: ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
+      };
+    })
+  );
+  expect(btnStruct).toHaveLength(5);
+  const titles = ['Portfolio', 'SAP BTP', 'Apps JS', 'Próximo caso', 'MundoCloud'];
+  for (const b of btnStruct) {
+    expect(b.invalidDescendants).toBe(0);
+    expect(b.ids).toHaveLength(3);
+  }
+  for (const title of titles) {
+    expect(btnStruct.some((b) => b.named.includes(title))).toBe(true);
+    await expect(
+      page.locator('.carousel-track').getByRole('button', { name: title })
+    ).toBeVisible();
+  }
+});
+
 test('carrusel — flecha derecha avanza exactamente una tarjeta', async ({ page }) => {
   await gotoProyectos(page);
   // Estado inicial determinista: índice 0 (primera tarjeta centrada).
