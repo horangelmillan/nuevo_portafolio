@@ -51,7 +51,6 @@
 }
 
 .carousel-card {
-    position: relative;
     flex: 0 0 auto;
     width: min(320px, 78vw);
     background: rgba(250, 245, 236, 0.92);
@@ -61,6 +60,9 @@
     box-shadow: 0 8px 24px rgba(12, 12, 19, 0.12);
     transform-origin: center center;
     user-select: none;
+    /* Containing block explícito del botón-hit estirado (el transform de
+       escala ya lo fija; se declara para no depender de ello). */
+    position: relative;
 }
 
 .carousel-card h3 {
@@ -74,20 +76,18 @@
     cursor: pointer;
 }
 
-/* Botón nativo superpuesto a cada tarjeta (a11y): el li conserva todo lo
-   visual (fondo/borde/padding/sombra/transform); el botón es un velo
-   transparente a caja completa que porta el nombre accesible vía
-   aria-labelledby. No envuelve el texto porque button solo admite
-   phrasing content (sin h3/p dentro). cursor heredado: conserva grab
-   de la vista y pointer solo en la activa. */
+/* Botón-hit estirado (a11y + HTML válido): el li queda como listitem
+   directo del ul con su contenido intacto y la semántica de botón la da un
+   <button> real, vacío e invisible, estirado sobre toda la tarjeta
+   (patrón stretched-link). Sin texto visible dentro no aplica
+   label-content-name-mismatch; el aria-label lleva el texto íntegro. */
 .carousel-card-btn {
     position: absolute;
     inset: 0;
     margin: 0;
     padding: 0;
     border: 0;
-    border-radius: inherit;
-    background: transparent;
+    background: none;
     font: inherit;
     color: inherit;
     cursor: inherit;

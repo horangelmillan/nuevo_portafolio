@@ -91,53 +91,6 @@ test('carrusel — renderiza 5 tarjetas, flechas y estado inicial', async ({ pag
   expect(mask).toContain('linear-gradient');
 });
 
-test('carrusel — semántica nativa: li puros y botón con nombre visible', async ({ page }) => {
-  await gotoProyectos(page);
-  // La pista solo tiene li (5 tarjetas + el espaciador final real).
-  const tags = await page.evaluate(() =>
-    Array.from(document.querySelector('.carousel-track').children).map((el) => el.tagName)
-  );
-  expect(tags).toEqual(['LI', 'LI', 'LI', 'LI', 'LI', 'LI']);
-  // Sin roles ni nombres que rompan la lista: el interactivo es un botón
-  // nativo por tarjeta cuyo nombre sale del texto visible vía
-  // aria-labelledby (título+contexto+estado). El botón no envuelve los
-  // h3/p (su modelo de contenido solo admite phrasing content).
-  const cardAttrs = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.carousel-card')).map((el) => ({
-      role: el.getAttribute('role'),
-      tab: el.getAttribute('tabindex'),
-      label: el.getAttribute('aria-label'),
-    }))
-  );
-  expect(cardAttrs).toHaveLength(5);
-  for (const a of cardAttrs) {
-    expect(a).toEqual({ role: null, tab: null, label: null });
-  }
-  await expect(page.locator('.carousel-card > button.carousel-card-btn')).toHaveCount(5);
-  const btnStruct = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.carousel-card > button')).map((b) => {
-      const ids = (b.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
-      return {
-        ids,
-        invalidDescendants: b.querySelectorAll('h1,h2,h3,h4,h5,h6,p,div,ul,ol,li').length,
-        named: ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' '),
-      };
-    })
-  );
-  expect(btnStruct).toHaveLength(5);
-  const titles = ['Portfolio', 'SAP BTP', 'Apps JS', 'Próximo caso', 'MundoCloud'];
-  for (const b of btnStruct) {
-    expect(b.invalidDescendants).toBe(0);
-    expect(b.ids).toHaveLength(3);
-  }
-  for (const title of titles) {
-    expect(btnStruct.some((b) => b.named.includes(title))).toBe(true);
-    await expect(
-      page.locator('.carousel-track').getByRole('button', { name: title })
-    ).toBeVisible();
-  }
-});
-
 test('carrusel — flecha derecha avanza exactamente una tarjeta', async ({ page }) => {
   await gotoProyectos(page);
   // Estado inicial determinista: índice 0 (primera tarjeta centrada).
@@ -231,4 +184,48 @@ test('carrusel — teclado ArrowRight/ArrowLeft navega', async ({ page }) => {
     null,
     { timeout: 5000 }
   );
+});
+
+test('carrusel — tarjetas con botón nativo y nombre accesible válido', async ({ page }) => {
+  await gotoProyectos(page);
+  // ul > li directos: ninguna tarjeta suplanta otro rol (auditoría `list`).
+  expect(await page.locator('.carousel-card[role]').count()).toBe(0);
+  // Hijos directos de la pista: solo li (la pista es un ul).
+  const nonLi = await page.evaluate(() =>
+    Array.from(document.querySelector('.carousel-track').children).filter(
+      (el) => el.tagName.toLowerCase() !== 'li'
+    ).length
+  );
+  expect(nonLi).toBe(0);
+  // HTML válido (WHATWG: button solo admite phrasing content): el botón de
+  // la tarjeta no envuelve headings/párrafos ni otro contenido no-phrasing.
+  const wrapped = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.carousel-card > button')).reduce(
+      (n, b) =>
+        n +
+        b.querySelectorAll(
+          'h1,h2,h3,h4,h5,h6,p,div,ul,ol,li,section,article,header,footer,main,form,table'
+        ).length,
+      0
+    )
+  );
+  expect(wrapped).toBe(0);
+  // Botón-hit por tarjeta con nombre accesible que incluye cada segmento
+  // del texto visible (título+contexto+estado). El botón es vacío e
+  // invisible (HTML válido); el nombre viaja en el aria-label.
+  const btns = page.locator('.carousel-card > button');
+  await expect(btns).toHaveCount(5);
+  const check = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('.carousel-card')).map((card) => {
+      const b = card.querySelector(':scope > button');
+      const label = (b.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+      const segments = Array.from(
+        card.querySelectorAll('h3, .carousel-context, .carousel-status')
+      ).map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim());
+      return (
+        segments.length === 3 && segments.every((s) => s.length > 0 && label.includes(s))
+      );
+    })
+  );
+  expect(check).toEqual([true, true, true, true, true]);
 });
