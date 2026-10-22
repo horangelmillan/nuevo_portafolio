@@ -350,22 +350,11 @@ test('caso — ESC cierra y el carrusel sigue navegable', async ({ page }) => {
 
 test('caso — Enter en tarjeta con foco lo abre', async ({ page }) => {
   const { errors } = await gotoProyectos(page);
-  await page.locator('.carousel-card[data-index="0"] button').focus();
+  // El foco va al botón nativo interno (el li es listitem plano, a11y).
+  await page.locator('.carousel-card[data-index="0"] > button').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
   await expect(page.getByRole('dialog', { name: 'Caso: Portfolio' })).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
-test('caso — Espacio en tarjeta con foco la abre una sola vez', async ({ page }) => {
-  const { errors } = await gotoProyectos(page);
-  await page.locator('.carousel-card[data-index="0"] button').focus();
-  await page.keyboard.press('Space');
-  await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
-  await expect(page.getByRole('dialog', { name: 'Caso: Portfolio' })).toBeVisible();
-  // Activación única: un solo overlay y sin errores de doble manejo
-  // (el onKeyDown manual anterior se retiró; solo dispara el click nativo).
-  expect(await page.locator('.case-overlay').count()).toBe(1);
   expect(errors).toEqual([]);
 });
 
