@@ -64,10 +64,10 @@ export const CAROUSEL_ITEMS = [
   {
     title: "MundoCloud",
     context: "Sitio corporativo · WordPress",
-    status: "En línea desde 2026",
-    // Contenido real en cases.js (bloques Diseño/Operación).
+    status: "En línea — administración y operación",
+    // Contenido real en cases.js (bloques Plataforma/Hosting/SSL/Caché).
     kind: "Sitio corporativo",
-    stack: "WordPress a medida · HTML · formularios",
+    stack: "WordPress · Elementor · Astra · WP Super Cache",
     color: "#3b4fe4",
     slug: "mundocloud",
   },
