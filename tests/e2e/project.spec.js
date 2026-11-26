@@ -302,21 +302,24 @@ test('caso — tap en activa expande sin cambiar de URL', async ({ page }) => {
   // Sin redirección: seguimos en home.
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('dialog', { name: 'Caso: Portfolio' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cerrar caso' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Volver a proyectos' })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
-test('caso — mundocloud sin fotos y volver al carrusel', async ({ page }) => {
+test('caso — mundocloud con galería y volver al carrusel', async ({ page }) => {
   const { errors } = await gotoProyectos(page);
   await arrowTo(page, 4);
   await page.locator('.carousel-card[data-index="4"]').click();
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
   await expect(page.getByRole('dialog', { name: 'Caso: MundoCloud' })).toBeVisible();
-  // Sin fotos en la hoja (decisión usuario: él las posiciona).
-  await expect(page.locator('.case-sheet img')).toHaveCount(0);
+  // Galería formal minimalista: 2 figuras con bordes redondeados.
+  await expect(page.locator('.case-sheet .case-figure')).toHaveCount(2);
+  await expect(page.locator('.case-sheet .case-figure img')).toHaveCount(2);
+  const radius = await page.locator('.case-sheet .case-figure').first().evaluate((el) => getComputedStyle(el).borderRadius);
+  expect(parseFloat(radius)).toBeGreaterThanOrEqual(16);
   await expect(page.locator('.case-sheet .case-block')).not.toHaveCount(0);
   // Cerrar devuelve al carrusel intacto (misma URL, misma activa).
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   await expect(page.locator('.case-overlay.phase-open')).toHaveCount(0);
   // Cortina: el canvas no se mueve jamás (siempre hijo de SECTION, sin
   // .full) y sigue siendo uno solo.
@@ -402,7 +405,7 @@ test('caso cierre — el blob encoje desde el 100% sin volver a crecer', async (
   // ancho visible juntos durante todo el cierre. El muestreo desde Node
   // perdía la ventana bajo carga y falseaba el test.
   await startTraj(page);
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   const vw = await page.evaluate(() => window.innerWidth);
   await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   const traj = await readTraj(page);
@@ -524,7 +527,7 @@ test('caso R2 — scroll principal bloqueado con caso abierto y restaurado al ce
   expect(await page.evaluate(() => window.scrollY)).toBe(locked.y);
   // Al cerrar, el scroll vuelve a vivir donde estaba (restore instant:
   // se espera al asentamiento en vez de leer a mitad de vuelo).
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   await page.waitForFunction((exp) => window.scrollY === exp, lockedY, { timeout: 5000 });
   const restored = await page.evaluate(() => ({
@@ -544,47 +547,37 @@ test('caso R2 — scroll principal bloqueado con caso abierto y restaurado al ce
   expect(errors).toEqual([]);
 });
 
-test('caso R3 — hoja baja por bloques (snap JS) sin atasco y sin barra', async ({ page }) => {
+test('caso R3 — hoja con scroll libre natural (sin hijack) y banda Volver fija', async ({ page }) => {
   const { errors } = await gotoProyectos(page);
   await arrowTo(page, 4);
   await page.locator('.carousel-card[data-index="4"]').click();
   await expect(page.locator('.case-overlay.phase-open')).toBeVisible({ timeout: 8000 });
-  const snap = await page.evaluate(() => {
+  const free = await page.evaluate(() => {
     const sheet = document.querySelector('.case-sheet');
     const cs = getComputedStyle(sheet);
-    const block = document.querySelector('.case-sheet .case-block');
+    const bar = document.querySelector('.case-topbar');
     return {
-      type: cs.scrollSnapType,
-      bar: cs.scrollbarWidth,
-      blockAlign: block ? getComputedStyle(block).scrollSnapAlign : null,
+      snap: cs.scrollSnapType,
+      barDisplay: cs.scrollbarWidth,
+      overX: cs.overflowX,
+      topPos: bar ? getComputedStyle(bar).position : null,
+      topBg: bar ? getComputedStyle(bar).backgroundColor : null,
     };
   });
-  // Sin snap CSS (fijaba 207 y revertía scrollTo, medido con proximity
-  // y mandatory): el snap por bloques es 100% JS. El align de los hijos
-  // se conserva porque el JS lo usa para calcular paradas.
-  expect(snap.type).toBe('none');
-  expect(snap.bar).toBe('none');
-  expect(snap.blockAlign).toBe('start');
-  // Una muesca de rueda baja UN bloque exacto (parada = inicio de bloque
-  // menos su margen) sin mover la página trasera.
+  // Sin snap (CSS ni JS por muesca: NN/g Scrolljacking 101) y sin barra.
+  // overflow-x: clip puede serializar como hidden según el motor: ambos
+  // valen (ninguno genera scroll ni mueve el layout).
+  expect(free.snap).toBe('none');
+  expect(free.barDisplay).toBe('none');
+  expect(['clip', 'hidden']).toContain(free.overX);
+  // La banda Volver es sticky y opaca: nunca tapa titulares (2.4.11/F110).
+  expect(free.topPos).toBe('sticky');
+  // Scroll libre: la hoja baja a cualquier posición continua (sin topes
+  // ni paradas forzadas) sin mover la página trasera.
   const y0 = await page.evaluate(() => window.scrollY);
-  const settleTop = async () => {
-    let prevTop = -1;
-    let stable = 0;
-    for (let i = 0; i < 60; i++) {
-      const t = await page.evaluate(() => document.querySelector('.case-sheet').scrollTop);
-      if (t === prevTop && ++stable >= 3) return t;
-      if (t !== prevTop) stable = 0;
-      prevTop = t;
-      // Un frame entre sondeos (polling rAF, no sleep fijo).
-      await page.waitForFunction(() => new Promise(requestAnimationFrame));
-    }
-    return prevTop;
-  };
-  // La fuente variable puede seguir cargando y mover el layout:
-  // medir los topes DESPUÉS de fonts.ready, no antes.
+  // La fuente variable puede seguir cargando y mover el layout: medir
+  // DESPUÉS de fonts.ready + margen de frames (mismo patrón del R3 viejo).
   await page.evaluate(() => document.fonts.ready);
-  // Margen de frames para el re-layout tras el swap de fuente.
   await page.waitForFunction(() => new Promise((resolve) => {
     let n = 0;
     const f = () => {
@@ -593,42 +586,57 @@ test('caso R3 — hoja baja por bloques (snap JS) sin atasco y sin barra', async
     };
     requestAnimationFrame(f);
   }));
-  const stops2 = await page.evaluate(() => {
+  const geom = await page.evaluate(() => {
     const sheet = document.querySelector('.case-sheet');
-    return Array.from(sheet.children)
-      .filter((el) => getComputedStyle(el).scrollSnapAlign !== 'none')
-      .map((el) => el.offsetTop - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0));
+    const blocks = Array.from(document.querySelectorAll('.case-sheet .case-block'));
+    return {
+      maxTop: sheet.scrollHeight - sheet.clientHeight,
+      noOverX: sheet.scrollWidth <= sheet.clientWidth + 1,
+      tops: blocks.map((b) => b.getBoundingClientRect().top),
+    };
   });
-  expect(stops2.length).toBeGreaterThan(1);
-  // Muesca realista (120px): primera parada = primer bloque exacto.
-  const box = await page.locator('.case-sheet').boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 120);
-  let cur = await settleTop();
-  expect(cur).toBeGreaterThan(0);
-  expect(Math.abs(stops2[0] - cur)).toBeLessThan(3);
-  // Muesca a muesca hasta el final: cada parada es un bloque exacto
-  // (sin saltos ni atascos) sin mover la página.
-  const maxTop = await page.evaluate(() => {
+  // Hay recorrido real y sin desborde horizontal.
+  expect(geom.maxTop).toBeGreaterThan(400);
+  expect(geom.noOverX).toBe(true);
+  // Los bloques no se solapan: cada uno empieza debajo del anterior.
+  for (let i = 1; i < geom.tops.length; i++) {
+    expect(geom.tops[i]).toBeGreaterThan(geom.tops[i - 1]);
+  }
+  // Bajada continua hasta el fondo: llega al máximo sin atasco y la
+  // banda Volver sigue pegada arriba (sticky) sin tapar contenido.
+  await page.evaluate(() => document.querySelector('.case-sheet').scrollTo(0, 1e6));
+  await page.waitForFunction(() => {
+    const s = document.querySelector('.case-sheet');
+    return s.scrollTop >= s.scrollHeight - s.clientHeight - 2;
+  });
+  const bottom = await page.evaluate(() => {
     const sheet = document.querySelector('.case-sheet');
-    return sheet.scrollHeight - sheet.clientHeight;
+    const bar = document.querySelector('.case-topbar');
+    const link = document.querySelector('.case-sheet .case-link');
+    const lr = link.getBoundingClientRect();
+    return {
+      top: sheet.scrollTop,
+      barTop: bar.getBoundingClientRect().top,
+      sheetTop: sheet.getBoundingClientRect().top,
+      linkVisible: lr.top < window.innerHeight && lr.bottom > 0,
+      pageY: window.scrollY,
+    };
   });
-  for (let i = 1; i < stops2.length; i++) {
-    await page.mouse.wheel(0, 120);
-    cur = await settleTop();
-    expect(Math.abs(Math.min(stops2[i], maxTop) - cur)).toBeLessThan(3);
-    expect(await page.evaluate(() => window.scrollY)).toBe(y0);
-  }
-  // Hacia arriba vuelve bloque a bloque hasta el inicio (tope 0, que no
-  // es parada snap: se acepta 0 exacto o la primera parada).
-  for (let i = stops2.length - 2; i >= 0; i--) {
-    await page.mouse.wheel(0, -120);
-    cur = await settleTop();
-    expect(Math.abs(stops2[i] - cur)).toBeLessThan(3);
-  }
-  await page.mouse.wheel(0, -120);
-  cur = await settleTop();
-  expect(cur).toBeLessThan(4);
+  expect(bottom.top).toBeGreaterThan(400);
+  // La banda sigue arriba de la hoja (sticky) y el CTA final es visible.
+  expect(Math.abs(bottom.barTop - bottom.sheetTop)).toBeLessThan(2);
+  expect(bottom.linkVisible).toBe(true);
+  // La página trasera no se movió en ningún momento.
+  expect(bottom.pageY).toBe(y0);
+  // Subida al inicio: vuelve a 0 y el título respira bajo la banda.
+  await page.evaluate(() => document.querySelector('.case-sheet').scrollTo(0, 0));
+  await page.waitForFunction(() => document.querySelector('.case-sheet').scrollTop === 0);
+  const headGap = await page.evaluate(() => {
+    const bar = document.querySelector('.case-topbar').getBoundingClientRect();
+    const h2 = document.querySelector('.case-sheet h2').getBoundingClientRect();
+    return h2.top - bar.bottom;
+  });
+  expect(headGap).toBeGreaterThanOrEqual(0);
   expect(await page.evaluate(() => window.scrollY)).toBe(y0);
   expect(errors).toEqual([]);
 });
@@ -658,7 +666,7 @@ test('caso chrome — nav y footer apagados en el detalle, vivos al volver', asy
   expect(shut.navPe).toBe('none');
   expect(shut.footOp).toBe('0');
   expect(shut.footPe).toBe('none');
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   // La retirada es con transición (0.7s, pointer-events discreto a mitad):
   // se espera a que el puntero reviva en ambos. La opacidad la vuelven a
@@ -692,7 +700,7 @@ test('caso gutter — abrir/cerrar no ensancha ni mueve el contenido', async ({ 
   // Compensación exacta durante el lock (o vacía en overlay).
   expect(await page.evaluate(() => document.body.style.paddingRight)).toBe(sbw0 > 0 ? `${sbw0}px` : '');
   const during = await widths();
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   await expect(page.locator('.case-overlay')).toHaveCount(0, { timeout: 8000 });
   // Al volver la compensación se retira con el resto del lock.
   expect(await page.evaluate(() => document.body.style.paddingRight)).toBe('');
@@ -866,7 +874,7 @@ test('caso sombra — el morph conserva sombra al expandir y al encoger', async 
   // amplia: si la forma aún desborda el lienzo se sigue hasta k 0.92).
   const collapseP = catchRamp(page, 0.3, 0.95, 'closing');
   await page.waitForFunction(() => new Promise(requestAnimationFrame));
-  await page.getByRole('button', { name: 'Cerrar caso' }).click();
+  await page.getByRole('button', { name: 'Volver a proyectos' }).click();
   const sample2 = await collapseP;
   expect(sample2, 'muestra a mitad del colapso').not.toBeNull();
   expect(sample2.ramp, `collapse k=${sample2.k} ref=${ambient.ramp}`).toBeGreaterThanOrEqual(ambient.ramp * 0.5);

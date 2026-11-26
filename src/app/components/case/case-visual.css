@@ -1,0 +1,51 @@
+/* Visual por bloque: tarjeta en tono distinto a las fotos (las fotos ya
+   son blancas: el diagrama va en papel tostado con borde naranja tenue),
+   SVG fluido, sin desbordes. El texto hereda Outfit del sitio. */
+
+.case-visual {
+    margin: 1.25rem 0 0;
+    background: #f8f2e5;
+    border: 1px solid rgba(207, 68, 9, 0.22);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(207, 68, 9, 0.08);
+    max-width: 100%;
+}
+
+.case-visual svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.case-visual svg text {
+    font-family: inherit;
+}
+
+/* Flujo animado: línea punteada que avanza (solo decoración). */
+.case-flow {
+    stroke-dasharray: 6 6;
+    animation: case-dash 1.6s linear infinite;
+}
+
+@keyframes case-dash {
+    to { stroke-dashoffset: -24; }
+}
+
+.case-pulse {
+    animation: case-pulse 2.2s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+@keyframes case-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .case-flow,
+    .case-pulse {
+        animation: none;
+    }
+}
